@@ -16,6 +16,10 @@
 # Wie können wir während der nächsten Jahre überprüfen, ob wir auf diesem Pfad sind?
 
 
+### NEED TO DO: BUILD IN DENSITY/HABITAT DEPENDENCE
+## ADD SOME ENVIRONMENTAL CONSTRAINT THAT CAN BE LIFTED IN FUTURE
+
+
 library(popbio)
 library(doParallel)
 library(foreach)
@@ -38,7 +42,7 @@ select<-dplyr::select
 setwd("C:\\Users\\sop\\OneDrive - Vogelwarte\\AQWA")
 
 
-AW<-fread("AQWA_counts_GER.csv") %>%
+AW<-fread("data/AQWA_counts_GER.csv") %>%
   rename(Year=V1) %>%
   filter(!is.na(Year)) %>%
   filter(Year>2002) # omit the counts from the 1990s that suggest massive decreases
@@ -47,7 +51,7 @@ years<-AW$Year
 
 
 # Population counts (from years 2003 to 2024)
-y <- AW$Ntot		# ENTER DATA OR READ IN AS VECTOR
+y <- AW$Nmales		# ENTER DATA OR READ IN AS VECTOR
 jags.data <- list(ncountyears = length(years-1), y = y[1:21], nintroyears = 30)
 
 
@@ -59,7 +63,7 @@ jags.data <- list(ncountyears = length(years-1), y = y[1:21], nintroyears = 30)
 # 
 ##############################################################################
 
-sink("AQWA.IPM.intro.jags")
+sink("models/AQWA.IPM.intro.jags")
 cat("
 model {
 
@@ -77,7 +81,7 @@ mphia ~ dunif(0.28,0.56)				### survival of adult females
 mphij ~ dunif(0.20,0.44)				### survival of first year females
 mfec1 ~ dunif(2.4,4.0)			   ### fecundity = number of fledglings raised per FIRST brood
 mfec2 ~ dunif(1.0,2.5)			   ### fecundity = number of fledglings raised per SECOND brood, should be slightly lower than first brood
-
+prop.males ~ dnorm(0.56, 0.5)  ### proportion of population that is male and can therefore be counted in population - 56%
 
 
 #--------------------------------------------------
@@ -104,8 +108,11 @@ for (t in 1:(ncountyears+nintroyears)){
 
 # Population growth rate
 for (t in 1:(ncountyears-1)){
-   lambda[t] <- Ntot[t+1] / min(1,Ntot[t]) # prevent invalid parent error when Ntot=0
-   }
+   lambda[t] <- Ntot[t+1] / max(1,Ntot[t]) # prevent invalid parent error when Ntot=0
+   loglambda[t]<-log(lambda[t])## for calculating geometric mean of overall population growth rate
+}
+    #### OVERALL POPULATION GROWTH RATE  #########
+    mean.lambda<-exp((1/(ncountyears-1))*sum(loglambda[1:(ncountyears-1)]))   # Geometric mean
 
 
 #--------------------------------------------
@@ -114,8 +121,8 @@ for (t in 1:(ncountyears-1)){
    # 4.1 System process
    for (t in 2:ncountyears){
         db[t-1] ~ dunif(0,0.5)            ### proportion of double-brooding females who would then have F1+F2 fecundity												# random variation around fecundity
-        Nfemdb[t-1]  ~ dbin(db[t-1],round((Ntot[t-1])*0.44))  ## random draw of double brooding females
-      	chicks[t-1] <- (Ntot[t-1])*0.44* mfec1 + Nfemdb[t-1]*mfec2			# total fecundity
+        Nfemdb[t-1]  ~ dbin(db[t-1],round((Ntot[t-1])*(1-prop.males)))  ## random draw of double brooding females
+      	chicks[t-1] <- (Ntot[t-1])*(1-prop.males)* mfec1 + Nfemdb[t-1]*mfec2			# total fecundity
       	chicksrd[t-1] <- round(chicks[t-1])
 		N1[t] ~ dbin(phij[t-1],chicksrd[t-1]) 
 		NadSurv[t] ~ dbin(phia[t-1],round((Ntot[t-1])))
@@ -124,9 +131,10 @@ for (t in 1:(ncountyears-1)){
    # 4.2 Observation process
    for (t in 1:ncountyears){
    	    Ntot[t] <- NadSurv[t] + N1[t]								## total population		
-	      Ntotobs[t] <- max(1,(Ntot[t]))*0.56								## only males are counted, which is 56% of population		
-	      Ntotrd[t] <- round(Ntotobs[t])			
+	      Ntotobs[t] <- max(1,(Ntot[t]))*prop.males								## only males are counted, which is 56% of population
+	      Ntotrd[t] <- round(Ntotobs[t])
         y[t] ~ dpois(Ntotrd[t])
+        #  y[t] ~ dbin(prop.males,round(Ntot[t]))                 ## changed from a Poisson to a binomial draw where 56% of the population can be recorded as males - results in inconsistent node error
    }
       
       
@@ -183,13 +191,13 @@ inits <- function(){list(
   mfec2 = runif(1, 1,2.5))}
 
 # Parameters monitored
-parameters <- c("Ntot","phij","phia","mfec1","mfec2","db","lambda")
+parameters <- c("Ntot","mphij","mphia","mfec1","mfec2","mean.lambda","prop.males")
 
 
 # MCMC settings
-ni <- 15000
-nt <- 1
-nb <- 10000
+ni <- 75000
+nt <- 5
+nb <- 25000
 nc <- 4
 
 
@@ -198,7 +206,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "C:\\Users\\sop\\OneDrive - Vogelwarte\\AQWA\\AQWA.IPM.intro.jags",
+                  "C:\\Users\\sop\\OneDrive - Vogelwarte\\AQWA\\models\\AQWA.IPM.intro.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
@@ -206,190 +214,71 @@ ipm.model <- jags(jags.data,
 
 ############################################################################
 #
-# WRITE ALL OUTPUT INTO A TEXT FILE
+# WRITE ALL OUTPUT INTO A TEXT FILE ----
 # 
 ##############################################################################
+out<-as.data.frame(ipm.model$summary)  
+out$parameter<-row.names(ipm.model$summary)
+names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
-write.table(ipm.model$summary, "AQWA_HU_Output_table_v5.csv", sep=",")
-
-
-
-
-############################################################################
-#
-# MAKE A GRAPH OF THE POPULATION TRAJECTORY AND KEY DEMOGRAPHIC PARAMETERS
-# 
-##############################################################################
-nyears = length(years)
-
-
-pdf("AQWA_Hungary_model_output_v5.pdf", width=13, height=10)
-
-par(mfrow=c(2,2), mar=c(4,5,0,0),oma=c(0,0,0,0))
-
-
-### PLOT 1 - POPULATION TRAJECTORY
-
-lower <- upper <- lowerhyp <- upperhyp <- numeric()
-for (i in 1:nyears){
-  lower[i] <- quantile(ipm.model $sims.list$Ntot[,i], 0.025)
-  upper[i] <- quantile(ipm.model $sims.list$Ntot[,i], 0.975)
-}
-plot(ipm.model $mean$Ntot, type = "b", ylim = c(0, 750), ylab = "Population size", xlab = "", las = 1, pch = 16, frame = F, cex = 1.5, axes=F, main="", cex.lab=1.5, col='blue')
-
-axis(1, at=c(1:(nyears)), labels=c(1977:2011), cex.axis=1.3)
-axis(2, at=seq(0,750,250), labels=T, las=1, cex.axis=1.3)
-legend(x = 1, y = 700, legend = c("Counts", "Estimated trajectory"), pch = c(4, 16), col = c("red", "blue"), bty = "n")
-
-segments(1:nyears, lower, 1:nyears, upper, col="black")
-points(y, pch = 4, cex = 1.2, col="red")
-
-
-
-### PLOT 2 - ADULT SURVIVAL
-
-lower <- upper <- lowerhyp <- upperhyp <- numeric()
-for (i in 1:(nyears-1)){
-  lower[i] <- quantile(ipm.model $sims.list$phia[,i], 0.025)
-  upper[i] <- quantile(ipm.model $sims.list$phia[,i], 0.975)
-}
-plot(ipm.model $mean$phia, type = "b", ylim = c(0, 1), ylab = "Adult survival probability", xlab = "", las = 1, pch = 16, frame = F, cex = 1.5, axes=F, main="", cex.lab=1.5, col='blue')
-axis(1, at=c(1:(nyears)), labels=c(1977:2011), cex.axis=1.3)
-axis(2, at=seq(0,1,0.2), labels=T, las=1, cex.axis=1.3)
-segments(1:(nyears-1), lower, 1:(nyears-1), upper, col="black")
-
-
-
-### PLOT 3 - JUVENILE SURVIVAL
-
-lower <- upper <- lowerhyp <- upperhyp <- numeric()
-for (i in 1:(nyears-1)){
-  lower[i] <- quantile(ipm.model $sims.list$phij[,i], 0.025)
-  upper[i] <- quantile(ipm.model $sims.list$phij[,i], 0.975)
-}
-plot(ipm.model $mean$phij, type = "b", ylim = c(0, 1), ylab = "Juvenile survival probability", xlab = "", las = 1, pch = 16, frame = F, cex = 1.5, axes=F, main="", cex.lab=1.5, col='blue')
-axis(1, at=c(1:(nyears)), labels=c(1977:2011), cex.axis=1.3)
-axis(2, at=seq(0,1,0.2), labels=T, las=1, cex.axis=1.3)
-segments(1:(nyears-1), lower, 1:(nyears-1), upper, col="black")
-
-
-### PLOT 4 - FECUNDITY
-
-lower <- upper <- lowerhyp <- upperhyp <- numeric()
-for (i in 1:(nyears-1)){
-  lower[i] <- quantile(ipm.model $sims.list$f[,i], 0.025)*quantile(ipm.model $sims.list$nbrood[,i], 0.025)
-  upper[i] <- quantile(ipm.model $sims.list$f[,i], 0.975)*quantile(ipm.model $sims.list$nbrood[,i], 0.975)
-}
-plot(ipm.model $mean$f*ipm.model $mean$nbrood, type = "b", ylim = c(0, 10), ylab = "Fledglings / female", xlab = "", las = 1, pch = 16, frame = F, cex = 1.5, axes=F, main="", cex.lab=1.5, col='blue')
-axis(1, at=c(1:(nyears)), labels=c(1977:2011), cex.axis=1.3)
-axis(2, at=seq(0,10,2), labels=T, las=1, cex.axis=1.3)
-segments(1:(nyears-1), lower, 1:(nyears-1), upper, col="black")
-
-
-dev.off()
-
-
-
-
-############################################################################
-#
-# MAKE A GRAPH OF THE ENVIRONMENTAL EFFECTS
-# 
-##############################################################################
-
-pdf("AQWA_Hungary_effect_sizes_v5.pdf", width=9, height=7)
-
-par(mar=c(3,5,0,1),oma=c(0,0,0,0))
-plot(ipm.model $summary[172:177,1], ylim = c(-3, 3), ylab = "Mean effect size", xlab = "", las = 1, pch = 16, frame = F, cex = 1.5, axes=F, main="", cex.lab=1.5, col='blue')
-segments(1:6, ipm.model $summary[172:177,3], 1:6, ipm.model $summary[172:177,7], col="black")
-axis(1, at=c(1:6), labels=c("NAO","immigration","rain.fec","fire","inund","win.rain"), cex.axis=1.2)
-axis(2, at=seq(-3,3,1), labels=T, las=1, cex.axis=1.3)
-abline(h=0, lty=2)
-
-dev.off()
+write.table(out, "output/AQWA_GER_model_output.csv", sep=",")
 
 
 
 
 
-############################################################################
-#
-# MAKE A GRAPH OF THE CORRELATIONS WITH POP GROWTH RATE
-# 
-##############################################################################
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Figure 1: POPULATION TRAJECTORY IN PAST AND FUTURE ----------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## retrieve the past population estimates (2003-2023)
+AQWA.pred<-out[(grep("Ntot\\[",out$parm)),c(12,5,3,7)] %>%
+  mutate(Year=seq(min(AW$Year),(max(AW$Year)+jags.data$nintroyears),1)) %>%
+  mutate(ucl=ifelse(ucl>500,500,ucl))
 
 
+## CREATE A COLOUR PALETTE FOR THE NUMBER OF CHICKS RELEASED
+colfunc <- colorRampPalette(c("cornflowerblue", "firebrick"))
 
 
-l.fitted<-l.lower<-l.upper<-ad.fitted<-ad.lower<-ad.upper<-ju.fitted<-ju.lower<-ju.upper<-pr.fitted<-pr.lower<-pr.upper<-imm.fitted<-imm.lower<-imm.upper<-numeric()
+ggplot()+
+  geom_ribbon(data=AQWA.pred,aes(x=Year, ymin=lcl,ymax=ucl),alpha=0.2, fill="firebrick")+
+  geom_line(data=AQWA.pred, aes(x=Year, y=median),linewidth=1, col="firebrick")+
+  geom_point(data=AW,aes(x=Year, y=Ntot), size=2,col='darkblue')+
 
-for (i in 1:(nyears-1)){
-  l.fitted[i]<-quantile(ipm.model $sims.list$lambda[,i], 0.5)
-  l.lower[i]<-quantile(ipm.model $sims.list$lambda[,i], 0.025)
-  l.upper[i]<-quantile(ipm.model $sims.list$lambda[,i], 0.975)
+  ## format axis ticks
+  scale_y_continuous(name="N Aquatic Warblers", limits=c(0,500),breaks=seq(0,500,50), labels=as.character(seq(0,500,50)))+
+  scale_x_continuous(name="Year", breaks=seq(2000,2055,5), labels=as.character(seq(2000,2055,5)))+
   
-  ad.fitted[i]<-quantile(ipm.model $sims.list$phia[,i], 0.5)
-  ad.lower[i]<-quantile(ipm.model $sims.list$phia[,i], 0.025)
-  ad.upper[i]<-quantile(ipm.model $sims.list$phia[,i], 0.975)
-  
-  ju.fitted[i]<-quantile(ipm.model $sims.list$phij[,i], 0.5)
-  ju.lower[i]<-quantile(ipm.model $sims.list$phij[,i], 0.025)
-  ju.upper[i]<-quantile(ipm.model $sims.list$phij[,i], 0.975)
-  
-  imm.fitted[i]<-log(quantile(ipm.model $sims.list$imm[,i], 0.5))
-  imm.lower[i]<-log(quantile(ipm.model $sims.list$imm[,i], 0.025)+1)
-  imm.upper[i]<-log(quantile(ipm.model $sims.list$imm[,i], 0.975)+1)
-  
-  pr.fitted[i]<-quantile(ipm.model $sims.list$f[,i], 0.5)
-  pr.lower[i]<-quantile(ipm.model $sims.list$f[,i], 0.025)
-  pr.upper[i]<-quantile(ipm.model $sims.list$f[,i], 0.975)}
+  ## add vertical line for when introduction starts
+  geom_vline(aes(xintercept=2023), linetype=2, col="forestgreen", linewidth=2) +
 
+  ## beautification of the axes
+  theme(panel.background=element_rect(fill="white", colour="black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.text.y=element_text(size=16, color="black"),
+        axis.text.x=element_text(size=12, color="black",angle=45, vjust = 1, hjust=1), 
+        axis.title=element_text(size=16),
+        legend.position = c(0.90, 0.82))
 
-
-pdf("AQWA_Hungary_lambda_correlations_v5.pdf", width=9, height=9)
-
-par(mfrow=c(2,2), mar=c(4,5,0,0),oma=c(0,0,0,0))
-
-plot(l.fitted~ad.fitted, xlim=c(0,1), ylim=c(0,2.0), xlab="Adult survival probability",ylab="Population growth rate",las=1, type='p', pch=16, main="",frame=FALSE, cex.axis=1.3, cex=1, cex.lab=1.3)
-segments(ad.lower,l.fitted,ad.upper,l.fitted ,col="gray", lty=1, lwd=0.5)
-segments(ad.fitted,l.lower,ad.fitted,l.upper ,col="gray", lty=1, lwd=0.5)
-test<-cor.test(l.fitted,ad.fitted,alternative = c("two.sided"),method = "spearman")
-text(0.1,2.0, sprintf("r = %f, p = %g",test$estimate, test$p.value), adj=0)
-
-plot(l.fitted~ju.fitted, xlim=c(0,1), ylim=c(0,2.0), xlab="Juvenile survival probability",ylab="Population growth rate",las=1, type='p', pch=16, main="",frame=FALSE, cex.axis=1.3, cex=1, cex.lab=1.3)
-segments(ju.lower,l.fitted,ju.upper,l.fitted ,col="gray", lty=1, lwd=0.5)
-segments(ju.fitted,l.lower,ju.fitted,l.upper ,col="gray", lty=1, lwd=0.5)
-test<-cor.test(l.fitted,ju.fitted,alternative = c("two.sided"),method = "spearman")
-text(0,2.0, sprintf("r = %f, p = %g",test$estimate, test$p.value), adj=0)
-
-plot(l.fitted~pr.fitted, xlim=c(0,4), ylim=c(0,2.0), xlab="Fledglings / brood",ylab="Population growth rate",las=1, type='p', pch=16, main="",frame=FALSE, cex.axis=1.3, cex=1, cex.lab=1.3)
-segments(pr.lower,l.fitted,pr.upper,l.fitted ,col="gray", lty=1, lwd=0.5)
-segments(pr.fitted,l.lower,pr.fitted,l.upper ,col="gray", lty=1, lwd=0.5)
-test<-cor.test(l.fitted,pr.fitted,alternative = c("two.sided"),method = "spearman")
-text(0,2.0, sprintf("r = %f, p = %g",test$estimate, test$p.value), adj=0)
-
-plot(l.fitted~imm.fitted, xlim=c(0,6), ylim=c(0,2.0), xlab="log(number) of immigrants",ylab="Population growth rate",las=1, type='p', pch=16, main="",frame=FALSE, cex.axis=1.3, cex=1, cex.lab=1.3)
-segments(imm.lower,l.fitted,imm.upper,l.fitted ,col="gray", lty=1, lwd=0.5)
-segments(imm.fitted,l.lower,imm.fitted,l.upper ,col="gray", lty=1, lwd=0.5)
-test<-cor.test(l.fitted,imm.fitted,alternative = c("two.sided"),method = "spearman")
-text(0,2.0, sprintf("r = %f, p = %g",test$estimate, test$p.value), adj=0)
-
-
-
-dev.off()
-
-
-cor.test(winrain, inund)
+ggsave("output/AQWA_projection.jpg", width=180,height=131, quality=100, units="mm")
 
 
 
 
 
 
+
+
+
+
+
+
+
+#######~~~~~~~~~~~~~~ ABANDONED CODE REPLACED WITH IPM ABOVE ~~~~~~~~~~~~~~~~~~~~~--------------------
 
 
 ##########~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~######
-#################### SIMULATION OF POPULATION TRAJECTORY ACROSS RANGE OF PARAMETERS ########################################
+########## 5. EXHAUSTIVE SIMULATION OF POPULATION TRAJECTORY ACROSS RANGE OF PARAMETERS ########################################
 ##########~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~######
 
 ### SPECIFY RANGE OF PARAMETERS FOR DEMOGRAPHIC MODEL ###

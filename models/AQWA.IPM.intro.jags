@@ -15,7 +15,7 @@ mphia ~ dunif(0.28,0.56)				### survival of adult females
 mphij ~ dunif(0.20,0.44)				### survival of first year females
 mfec1 ~ dunif(2.4,4.0)			   ### fecundity = number of fledglings raised per FIRST brood
 mfec2 ~ dunif(1.0,2.5)			   ### fecundity = number of fledglings raised per SECOND brood, should be slightly lower than first brood
-
+prop.males ~ dnorm(0.56, 0.5)  ### proportion of population that is male and can therefore be counted in population - 56%
 
 
 #--------------------------------------------------
@@ -42,8 +42,11 @@ for (t in 1:(ncountyears+nintroyears)){
 
 # Population growth rate
 for (t in 1:(ncountyears-1)){
-   lambda[t] <- Ntot[t+1] / min(1,Ntot[t]) # prevent invalid parent error when Ntot=0
-   }
+   lambda[t] <- Ntot[t+1] / max(1,Ntot[t]) # prevent invalid parent error when Ntot=0
+   loglambda[t]<-log(lambda[t])## for calculating geometric mean of overall population growth rate
+}
+    #### OVERALL POPULATION GROWTH RATE  #########
+    mean.lambda<-exp((1/(ncountyears-1))*sum(loglambda[1:(ncountyears-1)]))   # Geometric mean
 
 
 #--------------------------------------------
@@ -52,8 +55,8 @@ for (t in 1:(ncountyears-1)){
    # 4.1 System process
    for (t in 2:ncountyears){
         db[t-1] ~ dunif(0,0.5)            ### proportion of double-brooding females who would then have F1+F2 fecundity												# random variation around fecundity
-        Nfemdb[t-1]  ~ dbin(db[t-1],round((Ntot[t-1])*0.44))  ## random draw of double brooding females
-      	chicks[t-1] <- (Ntot[t-1])*0.44* mfec1 + Nfemdb[t-1]*mfec2			# total fecundity
+        Nfemdb[t-1]  ~ dbin(db[t-1],round((Ntot[t-1])*(1-prop.males)))  ## random draw of double brooding females
+      	chicks[t-1] <- (Ntot[t-1])*(1-prop.males)* mfec1 + Nfemdb[t-1]*mfec2			# total fecundity
       	chicksrd[t-1] <- round(chicks[t-1])
 		N1[t] ~ dbin(phij[t-1],chicksrd[t-1]) 
 		NadSurv[t] ~ dbin(phia[t-1],round((Ntot[t-1])))
@@ -62,9 +65,10 @@ for (t in 1:(ncountyears-1)){
    # 4.2 Observation process
    for (t in 1:ncountyears){
    	    Ntot[t] <- NadSurv[t] + N1[t]								## total population		
-	      Ntotobs[t] <- max(1,(Ntot[t]))*0.56								## only males are counted, which is 56% of population		
-	      Ntotrd[t] <- round(Ntotobs[t])			
+	      Ntotobs[t] <- max(1,(Ntot[t]))*prop.males								## only males are counted, which is 56% of population
+	      Ntotrd[t] <- round(Ntotobs[t])
         y[t] ~ dpois(Ntotrd[t])
+        #  y[t] ~ dbin(prop.males,round(Ntot[t]))                 ## changed from a Poisson to a binomial draw where 56% of the population can be recorded as males - results in inconsistent node error
    }
       
       
