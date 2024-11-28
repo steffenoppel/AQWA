@@ -110,7 +110,7 @@ for (t in 1:(ncountyears-1)){
             #Double broods start in the future now, adapt the index of the parameters to it.
             
             db[t-1] ~ dnorm(0.25,1/(0.05^2))T(0,1)   ### proportion of double-brooding females 						
-            Nfemdb[t-1]  ~ dbin(db[t-ncountyears],round((Ntot[t-1])*0.44))  ## random draw of double brooding females
+            Nfemdb[t-1]  ~ dbin(db[t-1],round((Ntot[t-1])*0.44))  ## random draw of double brooding females
             
       	    chicks[t-1] <- (Ntot[t-1])*0.44* fec1[t] + Nfemdb[t-1]*fec2[t]			# total fecundity
       	    chicksrd[t-1] <- round(chicks[t-1]) + round(CAPT.ADD[t-1])
