@@ -140,9 +140,15 @@ for (t in 1:(ncountyears+nintroyears)){
    logit(phij[t]) <- l.mphij+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any)
    logit(phia[t]) <- l.mphia+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any) 
    log(fec1[t]) <- log.mfec1 + eps.fec[t]     # add random effect
-   log(fec2[t]) <- log.mfec2 + eps.fec[t]     # add random effect
 }
 
+#Fec 2, the fecundity of second broods, is only applied to future scenarios now
+
+for(t in 1:nintroyears){
+
+  log(fec2[t]) <- log.mfec2 + eps.fec[t+ncountyears] #To use the same eps for both
+  
+}
 
 #-----------------------
 # 3. Derived parameters
@@ -186,9 +192,6 @@ for (t in 1:(ncountyears-1)){
     
     #Set yearly double brood probabilities. Make db and Nfemdb vectors the following length as the others, then it is easier to incorporate them into the PVA.
     
-    db[1:(ncountyears-1)] <- 0
-    Nfemdb[1:(ncountyears-1)] <- 0
-    
     #for (ncr in 1:scen.capt.release){
     CAPT.ADD[ncountyears] <-48   ## 48 were released in first year
 
@@ -208,10 +211,10 @@ for (t in 1:(ncountyears-1)){
             
             #Double broods start in the future now, adapt the index of the parameters to it.
             
-            db[t-1] ~ dnorm(0.25,1/(0.05^2))T(0,1)   ### proportion of double-brooding females 						
-            Nfemdb[t-1]  ~ dbin(db[t-1],round((Ntot[t-1])*0.44))  ## random draw of double brooding females
+            db[t-ncountyears] ~ dnorm(0.25,1/(0.05^2))T(0,1)   ### proportion of double-brooding females 						
+            Nfemdb[t-ncountyears]  ~ dbin(db[t-ncountyears],round((Ntot[t-1])*0.44))  ## random draw of double brooding females
             
-      	    chicks[t-1] <- (Ntot[t-1])*0.44* fec1[t] + Nfemdb[t-1]*fec2[t]			# total fecundity
+      	    chicks[t-1] <- (Ntot[t-1])*0.44* fec1[t] + Nfemdb[t-ncountyears]*fec2[t-ncountyears]			# total fecundity
       	    chicksrd[t-1] <- round(chicks[t-1]) + round(CAPT.ADD[t-1])
 		        N1[t] ~ dbin(phij[t-1],chicksrd[t-1]) 
 		        NadSurv[t] ~ dbin(phia[t-1],round((Ntot[t-1])))
@@ -256,9 +259,8 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.Jaume.Randeff.jags",
+                  "models/AQWA.IPM.Jaume.Mowing.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
-
 
 
 #First thing: does inference affect the priors?
