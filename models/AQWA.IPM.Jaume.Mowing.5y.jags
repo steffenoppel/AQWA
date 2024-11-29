@@ -1,0 +1,75 @@
+
+Processing function input....... 
+
+Done. 
+ 
+Beginning parallel processing using 4 cores. Console output will be suppressed.
+
+Processing function input....... 
+
+Done. 
+ 
+Beginning parallel processing using 4 cores. Console output will be suppressed.
+
+Processing function input....... 
+
+Done. 
+ 
+Beginning parallel processing using 4 cores. Console output will be suppressed.
+
+Processing function input....... 
+
+Done. 
+ 
+Beginning parallel processing using 4 cores. Console output will be suppressed.
+List of 6
+ $ ncountyears: int 22
+ $ y          : num [1:22] 89 74 72 71 67 61 57 53 54 34 ...
+ $ nscenarios : num 8
+ $ nprojyears : num 20
+ $ releases   : num [1:8, 1:20] 50 50 50 50 50 50 50 50 50 50 ...
+ $ maxrepm    : num [1:8] 10000 10000 10000 10000 180 180 360 360
+$ncountyears
+[1] 22
+
+$y
+ [1] 89 74 72 71 67 61 57 53 54 34 19 20 10 14 15 20 16  6  7  3  1  3
+
+$nscenarios
+[1] 8
+
+$nprojyears
+[1] 20
+
+$releases
+     [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] [,11] [,12] [,13] [,14] [,15] [,16] [,17]
+[1,]   50   50   50   50   50    0    0    0    0     0     0     0     0     0     0     0     0
+[2,]   50   50   50   50   50   50   50   50   50    50     0     0     0     0     0     0     0
+[3,]   50   50   50   50   50    0    0    0    0     0     0     0     0     0     0     0     0
+[4,]   50   50   50   50   50   50   50   50   50    50     0     0     0     0     0     0     0
+[5,]   50   50   50   50   50    0    0    0    0     0     0     0     0     0     0     0     0
+[6,]   50   50   50   50   50   50   50   50   50    50     0     0     0     0     0     0     0
+[7,]   50   50   50   50   50    0    0    0    0     0     0     0     0     0     0     0     0
+[8,]   50   50   50   50   50   50   50   50   50    50     0     0     0     0     0     0     0
+     [,18] [,19] [,20]
+[1,]     0     0     0
+[2,]     0     0     0
+[3,]     0     0     0
+[4,]     0     0     0
+[5,]     0     0     0
+[6,]     0     0     0
+[7,]     0     0     0
+[8,]     0     0     0
+
+$maxrepm
+[1] 10000 10000 10000 10000   180   180   360   360
+
+
+List of 6
+ $ ncountyears: int 22
+ $ y          : num [1:22] 89 74 72 71 67 61 57 53 54 34 ...
+ $ nscenarios : num 8
+ $ nprojyears : num 20
+ $ releases   : num [1:8, 1:20] 50 50 50 50 50 50 50 50 50 50 ...
+ $ maxrepm    : num [1:8] 10000 10000 10000 10000 180 180 360 360
+
