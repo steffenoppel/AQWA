@@ -20,6 +20,20 @@
 # a modelling of either constrained or unconstrained reproduction by habitat availability
 # the release of exactly 50 individuals yearly, instead of a range between 45 and 50 
 
+#The projection scenarios are the following:
+
+#1) Mowing (habitat unconstrained) + 5 release years
+#2) Mowing (habitat unconstrained) + 10 release years
+
+#3) No mowing (habitat unconstrained) + 5 release years
+#4) No mowing (habitat unconstrained) + 10 release years
+
+#5) No mowing + habitat constrained 180 + 5 release years
+#6) No mowing + habitat constrained 180 + 10 release years
+
+#7) No mowing + habitat constrained 360 + 5 release years
+#8) No mowing + habitat constrained 360 + 10 release years
+
 library(popbio)
 library(doParallel)
 library(foreach)
@@ -209,17 +223,17 @@ for (t in 1:(ncountyears-1)){
 
 #Scenarios to be represented
 
-#1) No mowing (habitat unconstrained) + 5 release years
-#2) No mowing (habitat unconstrained) + 10 release years
+#1) Mowing (habitat unconstrained) + 5 release years
+#2) Mowing (habitat unconstrained) + 10 release years
 
-#3) Mowing (habitat unconstrained) + 5 release years
-#4) Mowing (habitat unconstrained) + 10 release years
+#3) No mowing (habitat unconstrained) + 5 release years
+#4) No mowing (habitat unconstrained) + 10 release years
 
-#5) Mowing + habitat constrained 180 + 5 release years
-#6) Mowing + habitat constrained 180 + 10 release years
+#5) No mowing + habitat constrained 180 + 5 release years
+#6) No mowing + habitat constrained 180 + 10 release years
 
-#7) Mowing + habitat constrained 360 + 5 release years
-#8) Mowing + habitat constrained 360 + 10 release years
+#7) No mowing + habitat constrained 360 + 5 release years
+#8) No mowing + habitat constrained 360 + 10 release years
 
 
 #Hence, there should be variables storing all modifications in parameters involved in these simulations. These are:
@@ -319,19 +333,19 @@ ipm.model <- jags(jags.data,
 # Figure 1: POPULATION TRAJECTORY IN PAST AND FUTURE BY SCENARIO ----------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ntotdf <- data.frame(Ntot = numeric(length = length(ipm.model$mean$Ntot)), cip = numeric(length = length(ipm.model$mean$Ntot)), cim = numeric(length = length(ipm.model$mean$Ntot)), Scenario = c(rep("No mowing + 5y", 42), rep("No mowing + 10y", 42), rep("Mowing + 5y Habitat Unconstrained", 42), rep("Mowing + 10y Habitat Unconstrained", 42), rep("Mowing + 5y Habitat Constrained 120 ha", 42), rep("Mowing + 10y Habitat Constrained 120 ha", 42), rep("Mowing + 5y Habitat Constrained 240 ha", 42), rep("Mowing + 10y Habitat Constrained 240 ha", 42)), year = rep(1:42, nscenarios))
+ntotdf <- data.frame(Ntot = numeric(length = length(ipm.model$mean$Ntot)), cip = numeric(length = length(ipm.model$mean$Ntot)), cim = numeric(length = length(ipm.model$mean$Ntot)), Scenario = c(rep("Mowing + 5y", 42), rep("Mowing + 10y", 42), rep("No mowing + 5y Habitat Unconstrained", 42), rep("No mowing + 10y Habitat Unconstrained", 42), rep("No mowing + 5y Habitat Constrained 120 ha", 42), rep("No mowing + 10y Habitat Constrained 120 ha", 42), rep("No mowing + 5y Habitat Constrained 240 ha", 42), rep("No mowing + 10y Habitat Constrained 240 ha", 42)), year = rep(1:42, nscenarios))
 
 ntotdf$Ntot <- as.numeric(t(ipm.model$mean$Ntot))
 ntotdf$cim <- as.numeric(t(ipm.model$q2.5$Ntot))
 ntotdf$cip <- as.numeric(t(ipm.model$q97.5$Ntot))
 
-ntotdf$Scenario <- factor(ntotdf$Scenario, levels = c("No mowing + 5y", "No mowing + 10y", "Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habitat Unconstrained", "Mowing + 5y Habitat Constrained 120 ha", "Mowing + 10y Habitat Constrained 120 ha", "Mowing + 5y Habitat Constrained 240 ha", "Mowing + 10y Habitat Constrained 240 ha"))
+ntotdf$Scenario <- factor(ntotdf$Scenario, levels = c("Mowing + 5y", "Mowing + 10y", "No mowing + 5y Habitat Unconstrained", "No mowing + 10y Habitat Unconstrained", "No mowing + 5y Habitat Constrained 120 ha", "No mowing + 10y Habitat Constrained 120 ha", "No mowing + 5y Habitat Constrained 240 ha", "No mowing + 10y Habitat Constrained 240 ha"))
 
 ntotdf$year <- factor(ntotdf$year)
 
 #The plot
 
-poptrends <- ggplot(data = ntotdf, aes(x = year, y = Ntot, col = Scenario, group = Scenario)) + geom_line(size = 1.1) + geom_vline(aes(xintercept = 23), linetype = 2) + geom_ribbon(aes(ymin = cim, ymax = cip), linetype = 2, fill = NA) + facet_wrap(~Scenario, nrow = 4)  + theme_bw() + theme(legend.position = "none") + scale_x_discrete(breaks = seq(from = 0, to = 42, by = 6))
+poptrends <- ggplot(data = ntotdf, aes(x = year, y = Ntot, col = Scenario, group = Scenario)) + geom_line(size = 1.1) + geom_vline(aes(xintercept = 23), linetype = 2) + geom_ribbon(aes(ymin = cim, ymax = cip), linetype = 2, fill = NA) + facet_wrap(~Scenario, nrow = 4)  + theme_bw() + theme(legend.position = "none") + scale_x_discrete(breaks = seq(from = 0, to = 42, by = 6)) + xlab("") + ylab("")
 
 #ggsave("output/Scenario_projections.jpg", width=181,height=141, quality=100, units="mm")
 
