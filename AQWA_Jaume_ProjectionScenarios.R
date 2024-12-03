@@ -475,7 +475,7 @@ out<-as.data.frame(ipm.model$summary)
 out$parameter<-row.names(ipm.model$summary)
 names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
-write.table(out, "output/AQWA_GER_model_JAUME_nscenarios_output.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v2.csv", sep=",")
 
 
 
