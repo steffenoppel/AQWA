@@ -16,18 +16,16 @@
       
       mean.p ~ dunif(0.05, 0.75)                  # resighting probability is the same for all birds
       
-      # Likelihood 
-      for (i in 1:nind){
-        # Define latent state at first capture
-        z[i,f[i]] <- 1
-        for (t in (f[i]+1):n.occasions){
-          # State process
-          z[i,t] ~ dbern(mu1[i,t])
-          mu1[i,t] <- phi[i,t-1] * z[i,t-1]
-          # Observation process
-          y[i,t] ~ dbern(mu2[i,t])
-          mu2[i,t] <- mean.p * z[i,t]
-        } #t
-      } #i
+      # Likelihood
+  for (i in 1:nind){
+    # Define latent state at first capture
+    z[i,f[i]] <- 1
+    for (t in (f[i]+1):n.occasions){
+      # State process
+      z[i,t] ~ dbern(z[i,t-1] * phi[i,t-1])
+      # Observation process
+      y[i,t] ~ dbern(z[i,t] * mean.p)
+    } #t
+  } #i
     }
     

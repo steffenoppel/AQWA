@@ -7,6 +7,7 @@ library(tidyverse)
 library(data.table)
 library(jagsUI)
 library(readxl)
+library(IPMbook)
 filter<-dplyr::filter
 select<-dplyr::select
 
@@ -76,41 +77,26 @@ cat("
       
       mean.p ~ dunif(0.05, 0.75)                  # resighting probability is the same for all birds
       
-      # Likelihood 
-      for (i in 1:nind){
-        # Define latent state at first capture
-        z[i,f[i]] <- 1
-        for (t in (f[i]+1):n.occasions){
-          # State process
-          z[i,t] ~ dbern(mu1[i,t])
-          mu1[i,t] <- phi[i,t-1] * z[i,t-1]
-          # Observation process
-          y[i,t] ~ dbern(mu2[i,t])
-          mu2[i,t] <- mean.p * z[i,t]
-        } #t
-      } #i
+      # Likelihood
+  for (i in 1:nind){
+    # Define latent state at first capture
+    z[i,f[i]] <- 1
+    for (t in (f[i]+1):n.occasions){
+      # State process
+      z[i,t] ~ dbern(z[i,t-1] * phi[i,t-1])
+      # Observation process
+      y[i,t] ~ dbern(z[i,t] * mean.p)
+    } #t
+  } #i
     }
     ",fill = TRUE)
 sink()
 
 # Initial values
 
-# Function to create a matrix of initial values for latent state z
-cjs.init.z <- function(ch,f){
-  for (i in 1:dim(ch)[1]){
-    if (sum(ch[i,])==1) next
-    n2 <- max(which(ch[i,]==1))
-    ch[i,f[i]:n2] <- NA
-  }
-  for (i in 1:dim(ch)[1]){
-    ch[i,1:f[i]] <- NA
-  }
-  return(ch)
-}
-
 inits <- function(){list(
-  z= cjs.init.z(as.matrix(AW_CH[,3:7]), f),
-  beta= matrix(runif(4, 0.4,0.6),ncol=2),
+  z= zInit(as.matrix(AW_CH[,3:7])),
+  beta= matrix(runif(4, 0.4,0.59),ncol=2),
   mean.p = runif(1, 0.2,0.7))}
 
 # Parameters monitored
