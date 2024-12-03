@@ -1,0 +1,22 @@
+
+    model {
+      # Priors and constraints
+      mean.phi ~ dunif(0.2, 0.8)              # Priors for age- and sex-specific survival
+      mean.p ~ dunif(0.05, 0.95)                  # resighting probability is the same for all birds
+
+      
+
+      
+      # Likelihood
+  for (i in 1:nind){
+    # Define latent state at first capture
+    z[i,f[i]] <- 1
+    for (t in (f[i]+1):n.occasions){
+      # State process
+      z[i,t] ~ dbern(z[i,t-1] * mean.phi)
+      # Observation process
+      y[i,t] ~ dbern(z[i,t] * mean.p)
+    } #t
+  } #i
+    }
+    

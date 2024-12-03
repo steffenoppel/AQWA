@@ -58,7 +58,10 @@ jags.data <- list(nind=dim(AW_CH)[1],
 # 
 ##############################################################################
 
-sink("models/AQWA.surv.jags")
+### tried 3 model formulations: constant, sex.det, and age.sex, and DIC is lowest for age.sex
+
+
+sink("models/AQWA.surv.age.sex.jags")
 cat("
     model {
       # Priors and constraints
@@ -97,6 +100,8 @@ sink()
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
   beta= matrix(runif(4, 0.4,0.59),ncol=2),
+  #beta= runif(2, 0.4,0.59),
+  #mean.phi= runif(1, 0.4,0.59),
   mean.p = runif(1, 0.2,0.7))}
 
 # Parameters monitored
@@ -114,7 +119,7 @@ nc <- 4
 surv.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.surv.jags",
+                  "models/AQWA.surv.age.sex.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
