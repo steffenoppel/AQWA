@@ -50,7 +50,9 @@ select<-dplyr::select
 # 1. LOAD DATA-------------
 # 
 ##############################################################################
-setwd("C:/Users/jba/OneDrive - Vogelwarte/Projects/Aquatic Warbler Steffen/Github repo/AQWA")
+try(setwd("C:/Users/jba/OneDrive - Vogelwarte/Projects/Aquatic Warbler Steffen/Github repo/AQWA"),silent=T)
+try(setwd("C:/STEFFEN/OneDrive - Vogelwarte/AQWA"),silent=T)
+try(setwd("C:/Users/sop/OneDrive - Vogelwarte/AQWA"),silent=T)
 
 AW<-fread("data/AQWA_counts_GER.csv") %>%
   rename(Year=V1) %>%
@@ -86,7 +88,7 @@ jags.data <- list(ncountyears = length(years-1), y = y[1:21], nscenarios = nscen
 jags.data$y[22] <- 3
 
 
-#Let's define new priors. Perhaps I should make them slightly wider. We have to discuss this. The important thing is, they resemble the prior knowledge.
+# Let's define new priors. Perhaps I should make them slightly wider. We have to discuss this. The important thing is, they resemble the prior knowledge.
 
 mean(runif(1e6, 0.28, 0.56)) #Mean is 0.42
 pa <- rnorm(1e6, 0.42, 0.03)
@@ -117,7 +119,7 @@ quantile(db)
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.Jaume.Mowing.Scenarios.jags")
+sink("models/AQWA.IPM.Mowing.Scenarios.v2.jags")
 cat("
 model {
 
@@ -282,12 +284,12 @@ for(ns in 5:nscenarios){
       for (t in (ncountyears+1):(ncountyears+nprojyears)){
         
             #Double broods start in the future now, adapt the index of the parameters to it.
-            
-            Nfemdb[ns,t-ncountyears] ~ dbin(db[ns,t-ncountyears],round((Ntot[ns,t-1])*(1-prop.males)))  ## random draw of double brooding females
+            # changed to proportion of actually breeding females AFTER density dependence
+            # Nfemdb[ns,t-ncountyears] ~ dbin(db[ns,t-ncountyears],round((Ntot[ns,t-1])*(1-prop.males)))  ## random draw of double brooding females
             
             #Apply density-dependence
             Nfem.breed1[ns,t-ncountyears] <- min(Ntot[ns,t-1]*(1-prop.males), maxrepf[ns])
-            Nfem.breed2[ns,t-ncountyears] <- min(Nfemdb[ns,t-ncountyears], maxrepf[ns])
+            Nfem.breed2[ns,t-ncountyears] ~ dbin(db[ns,t-ncountyears],round(Nfem.breed1[ns,t-ncountyears]))  
 
       	    chicks[ns,t-1] <- Nfem.breed1[ns,t-ncountyears] * fec1[t] + Nfem.breed2[ns,t-ncountyears]*fec2[t-ncountyears]			# total fecundity
       	    chicksrd[ns,t-1] <- round(chicks[ns,t-1]) + releases[ns,t-ncountyears]
@@ -324,7 +326,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.Jaume.Mowing.Scenarios.jags",
+                  "models/AQWA.IPM.Mowing.Scenarios.v2.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 

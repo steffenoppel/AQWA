@@ -1,0 +1,180 @@
+
+model {
+
+#----------------------------------------
+# 1. Define the priors for the parameters
+#----------------------------------------
+
+# Initial population sizes
+
+N1[1,1] ~ dnorm(60, 0.0001)T(0,)           # 1-year old individuals
+NadSurv[1,1] ~ dnorm(100, 0.0001)T(0,)      # Adults >= 2 years
+
+# DEMOGRAPHIC PARAMETERS INFORMED BY DATA FROM OTHER STUDIES
+mphia ~ dnorm(0.42,1/(0.03^2))T(0,1)			### survival of adult females
+mphij ~ dnorm(0.32,1/(0.025^2))T(0,1)				### survival of first year females
+mfec1 ~ dnorm(3.2,1/(0.16^2))			   ### fecundity = number of fledglings raised per FIRST brood
+mfec2 ~ dnorm(1.75,1/(0.15^2))			   ### fecundity = number of fledglings raised per SECOND brood, should be slightly lower than first brood
+prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is male and can therefore be counted in population - 56%
+
+
+#--------------------------------------------------
+# 2. Random variation in annual survival and productivity
+#--------------------------------------------------
+# CHANGE THE SCALE OF DEMOGRAPHIC PARAMETERS TO FACILITATE INCORPORATION OF COVARIATES
+l.mphij<-log(mphij/(1-mphij))	    # juvenile survival probability on logit scale;
+l.mphia<-log(mphia/(1-mphia))			# adult survival probability on logit scale
+log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
+log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
+
+# RANDOM ANNUAL EFFECTS ON SURVIVAL AND PRODUCTIVITY
+
+tau.surv<-1/pow(sigma.surv,2)
+sigma.surv~dunif(0,5)
+
+tau.prod <- pow(sigma.prod, -2)
+sigma.prod ~ dunif(0,2)
+
+for (t in 1:(ncountyears+nprojyears)){
+   eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
+   eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
+   logit(phij[t]) <- l.mphij+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any)
+   logit(phia[t]) <- l.mphia+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any) 
+   log(fec1[t]) <- log.mfec1 + eps.fec[t]     # add random effect
+}
+
+#Fec 2, the fecundity of second broods, is only applied to future scenarios now
+
+for(t in 1:nprojyears){
+
+  log(fec2[t]) <- log.mfec2 + eps.fec[t+ncountyears] #To use the same eps for both
+  
+}
+
+#-----------------------
+# 3. Derived parameters
+#-----------------------
+
+# Population growth rate
+for (t in 1:(ncountyears-1)){
+   lambda[t] <- Ntot[1,t+1] / max(1,Ntot[1,t]) # prevent invalid parent error when Ntot=0
+   loglambda[t]<-log(lambda[t])## for calculating geometric mean of overall population growth rate
+}
+    #### OVERALL POPULATION GROWTH RATE  #########
+    mean.lambda<-exp((1/(ncountyears-1))*sum(loglambda[1:(ncountyears-1)]))   # Geometric mean
+
+
+#--------------------------------------------
+# 4. Likelihood for population count data
+#--------------------------------------------
+   # 4.1 System process
+   for (t in 2:ncountyears){
+        
+      	chicks[1,t-1] <- (Ntot[1,t-1])*(1-prop.males)* fec1[t-1] # total fecundity
+      	chicksrd[1,t-1] <- round(chicks[1,t-1])
+		N1[1,t] ~ dbin(phij[t-1],chicksrd[1,t-1]) 
+		NadSurv[1,t] ~ dbin(phia[t-1],round((Ntot[1,t-1])))
+	}
+
+   # 4.2 Observation process
+   for (t in 1:ncountyears){
+   	    Ntot[1,t] <- NadSurv[1,t] + N1[1,t]								## total population		
+	      Ntotobs[t] <- max(1,(Ntot[1,t]))*prop.males								## only males are counted, which is 56% of population
+	      Ntotrd[t] <- round(Ntotobs[t])
+        y[t] ~ dpois(Ntotrd[t])
+        
+   }
+      
+  #To make calculations easy, let's replicate the calculations for the past into the 8 scenarios for all objects that are involved as well into the future projections
+  
+  for(ns in 2:nscenarios){
+  
+    Ntot[ns,1:ncountyears] <- Ntot[1,1:ncountyears]
+    N1[ns,1:ncountyears] <- N1[1,1:ncountyears]
+    NadSurv[ns,1:ncountyears] <- NadSurv[1,1:ncountyears]
+    chicks[ns,1:(ncountyears-1)] <- chicks[1,1:(ncountyears-1)]
+    chicksrd[ns,1:(ncountyears-1)] <- chicksrd[1,1:(ncountyears-1)]
+
+  }
+      
+# -------------------------------------------------        
+# 5. PREDICTION INTO THE FUTURE WITH ONGOING RELEASES
+# -------------------------------------------------
+
+#Scenarios to be represented
+
+#1) Mowing (habitat unconstrained) + 5 release years
+#2) Mowing (habitat unconstrained) + 10 release years
+
+#3) No mowing (habitat unconstrained) + 5 release years
+#4) No mowing (habitat unconstrained) + 10 release years
+
+#5) No mowing + habitat constrained 180 + 5 release years
+#6) No mowing + habitat constrained 180 + 10 release years
+
+#7) No mowing + habitat constrained 360 + 5 release years
+#8) No mowing + habitat constrained 360 + 10 release years
+
+
+#Hence, there should be variables storing all modifications in parameters involved in these simulations. These are:
+
+#DB and NfemDB should have two dimensions: Nscenario, and time. DB can be manipulated a priori, but not NfemDB
+
+#This should do it for the proportion of double broods
+
+#Scenarios 1 and 2, no double broods
+for(ns in 1:2){
+  for(t in 1:nprojyears){
+  
+  db[ns,t] <- 0
+
+  }
+}
+
+#The rest, double broods
+
+for(ns in 3:nscenarios){
+  for(t in 1:nprojyears){
+  
+  db[ns,t] ~ dnorm(0.25,1/(0.05^2))T(0,1)
+
+  }
+}
+
+#Females allowed to breed in every scenario
+
+maxrepf[1:4] <- maxrepm[1:4]
+
+for(ns in 5:nscenarios){
+
+  maxrepf[ns] <- (maxrepm[ns]*(1-prop.males))/prop.males
+
+}
+
+
+#Another variable, nintroyears, specifies the number of years for which the birds are released. It is already provided in the data.
+
+### INCLUDE SCENARIOS FOR N CAPTIVE BIRDS AND NUMBER OF YEARS
+    
+    ## POPULATION PROCESS
+
+    for(ns in 1:nscenarios){
+      for (t in (ncountyears+1):(ncountyears+nprojyears)){
+        
+            #Double broods start in the future now, adapt the index of the parameters to it.
+            # changed to proportion of actually breeding females AFTER density dependence
+            # Nfemdb[ns,t-ncountyears] ~ dbin(db[ns,t-ncountyears],round((Ntot[ns,t-1])*(1-prop.males)))  ## random draw of double brooding females
+            
+            #Apply density-dependence
+            Nfem.breed1[ns,t-ncountyears] <- min(Ntot[ns,t-1]*(1-prop.males), maxrepf[ns])
+            Nfem.breed2[ns,t-ncountyears] ~ dbin(db[ns,t-ncountyears],round(Nfem.breed1[ns,t-ncountyears]))  
+
+      	    chicks[ns,t-1] <- Nfem.breed1[ns,t-ncountyears] * fec1[t] + Nfem.breed2[ns,t-ncountyears]*fec2[t-ncountyears]			# total fecundity
+      	    chicksrd[ns,t-1] <- round(chicks[ns,t-1]) + releases[ns,t-ncountyears]
+		        N1[ns,t] ~ dbin(phij[t-1],chicksrd[ns,t-1]) 
+		        NadSurv[ns,t] ~ dbin(phia[t-1],round((Ntot[ns,t-1])))
+		   	    Ntot[ns,t] <- NadSurv[ns,t] + N1[ns,t]								## total population	
+  	} #Time loop
+  } #Nscenarios loop
+}
+
