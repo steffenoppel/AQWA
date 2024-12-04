@@ -442,28 +442,74 @@ poptrends <- ggplot(data = ntotdf, aes(x = year, y = Ntot, col = Scenario, group
 #ggsave("output/Scenario_projections.jpg", width=181,height=141, quality=100, units="mm")
 
 
-#Extinction probability (could plot this as well)
+# Extinction probability (could plot this as well)
+## revised to show prop samples where Ntot<3
 
 w0 <- function(x){
-  
-  ext <- sum(x == 0) / length(x)
+  ext <- sum(x < 2) / length(x)
   return(ext)
+}
+
+# ny <- jags.data$ncountyears
+# 
+# extprob <- matrix(nrow = nscenarios, ncol = nprojyears, data = 0)
+# 
+# #Quick plot, has to be improved in case we want to keep it
+# 
+# par(mfrow = c(4,2))
+# for(i in 1:nscenarios){
+#   for(t in 1:nprojyears){
+#     extprob[i,t] <- w0(ipm.model$sims.list$Ntot[,i,nprojyears+jags.data$ncountyears])
+#   }
+#   plot(extprob[i,t], type = "l", lwd = 1.9, ylim = c(0,1), ylab = "P(ext)", xlab = "Year", main = paste0("Scenario ", i))
+# }
+
+## simpler plot
+
+fut.ext<-as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[[3]],ipm.model$samples[[4]])) %>%
+  dplyr::select(tidyselect::starts_with("Ntot")) %>%
+  dplyr::select(tidyselect::ends_with(",42]"))
+
+names(fut.ext)<- c(("Mowing + 5y"), ("Mowing + 10y"),
+             ("No mowing + 5y Habitat Unconstrained"),
+             ("No mowing + 10y Habitat Unconstrained"),
+             ("No mowing + 5y Habitat Constrained 120 ha"),
+             ("No mowing + 10y Habitat Constrained 120 ha"),
+             ("No mowing + 5y Habitat Constrained 240 ha"),
+             ("No mowing + 10y Habitat Constrained 240 ha"))
+
+
+fut.ext %>%
+  gather(key="Scenario",value="N") %>%
+  group_by(Scenario) %>%
+  summarize(ext.prob=w0(N)) %>%
   
-}
+  ### start the plot ###
+  ggplot(aes(x = Scenario, y=ext.prob, fill = Scenario)) +                       # Draw overlaying histogram
+  geom_bar(stat="identity",alpha = 0.6) +
+  labs(x="Future scenarios", y="Probability of extinction within 20 years",
+       fill="Scenario") +
+  scale_fill_viridis_d(alpha=0.3,begin=0,end=0.98,direction=1) +
+  
+  theme(panel.background=element_rect(fill="white", colour="black"), 
+        axis.text.y=element_text(size=18, color="black"),
+        axis.text.x=element_blank(), 
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=12),
+        legend.title = element_text(size=14),
+        legend.position="inside",
+        legend.position.inside=c(0.65,0.80),
+        panel.grid.major = element_line(size=.1, color="grey94"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(fill=NA, colour = "black"))
 
-ny <- jags.data$ncountyears
 
-extprob <- matrix(nrow = nscenarios, ncol = nprojyears, data = 0)
+ggsave("output/Extinction_probability.jpg", width=181,height=141, quality=100, units="mm")
 
-#Quick plot, has to be improved in case we want to keep it
 
-par(mfrow = c(4,2))
-for(i in 1:nscenarios){
-  for(t in 1:nprojyears){
-    extprob[i,t] <- w0(ipm.model$sims.list$Ntot[,i,t+jags.data$ncountyears])
-  }
-  plot(extprob[i,], type = "l", lwd = 1.9, ylim = c(0,1), ylab = "P(ext)", xlab = "Year", main = paste0("Scenario ", i))
-}
+
+
+
 
 #It looks like extinction probabilities 20 years into the future are not large. What about population decline probabilities? (That is, what is the probability that the population size at the end of the projections is lower than that at the end of the releases, in each scenario?)
 # 
