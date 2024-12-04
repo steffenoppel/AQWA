@@ -21,6 +21,7 @@
 # the release of exactly 50 individuals yearly, instead of a range between 45 and 50
 
 # updated by Steffen on 4 Dec 2024 to include resighting data for survival
+# best survival model includes age effect for survival and sex effect for detection probability
 
 #The projection scenarios are the following:
 
@@ -36,6 +37,7 @@
 #7) No mowing + habitat constrained 360 + 5 release years
 #8) No mowing + habitat constrained 360 + 10 release years
 
+rm(list=ls())
 library(popbio)
 library(doParallel)
 library(foreach)
@@ -179,27 +181,28 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
+
+mphi[2] ~ dnorm(0.42,1/(0.03^2))T(0,1)			### survival of adult birds
+mphi[1] ~ dnorm(0.32,1/(0.025^2))T(0,1)		### survival of first year birds
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
-          phi[i,t] <- mphi[age[i,t], sex[i]]
+          phi[i,t] <- mphi[age[i,t]]
+          p[i,t] <- mean.p[sex[i]]
         } #t
+        p[i,n.markocc] <- mean.p[sex[i]]
       } #i
       
-        for(sx in 1:2) {
-          mphi[2,sx] ~ dnorm(0.42,1/(0.03^2))T(0,1)			### survival of adult males or females
-          mphi[1,sx] ~ dnorm(0.32,1/(0.025^2))T(0,1)		### survival of first year males or females
-        }
-
-      
-      mean.p ~ dunif(0.05, 0.75)                  # resighting probability is the same for all birds
+      for(sx in 1:2) {
+        mean.p[sx] ~ dunif(0.05, 0.95)                  # resighting probability differs between sexes
+      }
 
 
 #--------------------------------------------------
 # 2. Random variation in annual survival and productivity
 #--------------------------------------------------
 # CHANGE THE SCALE OF DEMOGRAPHIC PARAMETERS TO FACILITATE INCORPORATION OF COVARIATES
-l.mphij<-log(mphi[1,2]/(1-mphi[1,2]))	    # juvenile female survival probability on logit scale;
-l.mphia<-log(mphi[2,2]/(1-mphi[2,2]))			# adult female survival probability on logit scale
+l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
+l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
 log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
 log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
 
@@ -269,7 +272,7 @@ for (t in 1:(ncountyears-1)){
       # State process
       z[i,t] ~ dbern(z[i,t-1] * phi[i,t-1])
       # Observation process
-      y.marked[i,t] ~ dbern(z[i,t] * mean.p)
+      y.marked[i,t] ~ dbern(z[i,t] * p[i,t])
     } #t
   } #i
    
@@ -385,8 +388,8 @@ sink()
 # Initial values
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
-  mean.p = runif(1, 0.2,0.7),
-  mphi= matrix(c(runif(2, 0.25,0.35),runif(2, 0.45,0.55)),ncol=2, byrow=T),
+  mean.p = runif(2, 0.2,0.7),
+  mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),
   mfec1 = runif(1, 2.5,4.0),
   mfec2 = runif(1, 1,2.5))}
 
@@ -450,7 +453,7 @@ w0 <- function(x){
   return(ext)
 }
 
-# ny <- jags.data$ncountyears
+ny <- jags.data$ncountyears
 # 
 # extprob <- matrix(nrow = nscenarios, ncol = nprojyears, data = 0)
 # 
@@ -526,7 +529,7 @@ ggsave("output/Extinction_probability.jpg", width=181,height=141, quality=100, u
 
 ## plot histograms of future growth rates
 
-fut.lam<-as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[[3]],ipm.model$samples[[4]])) %>%
+as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[[3]],ipm.model$samples[[4]])) %>%
   dplyr::select(tidyselect::starts_with("proj.lambda")) %>%
   rename(nochange=`proj.lambda[1]`,no.mowing.unlim.hab=`proj.lambda[3]`,no.mowing.lim.hab=`proj.lambda[5]`) %>%
   dplyr::select(-tidyselect::starts_with("proj.lambda")) %>%
@@ -604,9 +607,9 @@ par(mfrow = c(2,2))
 adprior <- dnorm(seq(from = 0, to = 1, by = 0.01), mean = 0.42, sd = 0.03)
 plot(adprior, type = "l", xaxt = "n", ylab = "", xlab = "Estimate value", main = "Adult Survival \n Red = Prior, Blue = Estimate", ylim = c(0,15), col = "red", lwd = 2)
 axis(1, at = seq(from = 0, to = 100, by = 10), labels = seq(from = 0, to = 1, by = 0.1))
-ipm.model$mean$mphia
-ipm.model$sd$mphia
-adresult <- dnorm(seq(from = 0, to = 1, by = 0.01), mean = ipm.model$mean$mphia, sd = ipm.model$sd$mphia)
+ipm.model$mean$mphi[2]
+ipm.model$sd$mphi[2]
+adresult <- dnorm(seq(from = 0, to = 1, by = 0.01), mean = ipm.model$mean$mphi[2], sd = ipm.model$sd$mphi[2])
 lines(adresult, type = "l", lty = "dashed", col = "blue", lwd = 2)
 
 #Juvenile survival
@@ -614,9 +617,9 @@ lines(adresult, type = "l", lty = "dashed", col = "blue", lwd = 2)
 juvprior <- dnorm(seq(from = 0, to = 1, by = 0.01), mean = 0.32, sd = 0.025)
 plot(juvprior, type = "l", xaxt = "n", ylab = "", xlab = "Estimate value", main = "Juvenile Survival \n Red = Prior, Blue = Estimate", ylim = c(0,19), col = "red", lwd = 2)
 axis(1, at = seq(from = 0, to = 100, by = 10), labels = seq(from = 0, to = 1, by = 0.1))
-ipm.model$mean$mphij
-ipm.model$sd$mphij
-juvresult <- dnorm(seq(from = 0, to = 1, by = 0.01), mean = ipm.model$mean$mphij, sd = ipm.model$sd$mphij)
+ipm.model$mean$mphi[1]
+ipm.model$sd$mphi[1]
+juvresult <- dnorm(seq(from = 0, to = 1, by = 0.01), mean = ipm.model$mean$mphi[1], sd = ipm.model$sd$mphi[1])
 lines(juvresult, type = "l", lty = "dashed", col = "blue", lwd = 2)
 
 #First-brood productivity

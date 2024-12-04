@@ -17,27 +17,28 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
+
+mphi[2] ~ dnorm(0.42,1/(0.03^2))T(0,1)			### survival of adult birds
+mphi[1] ~ dnorm(0.32,1/(0.025^2))T(0,1)		### survival of first year birds
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
-          phi[i,t] <- mphi[age[i,t], sex[i]]
+          phi[i,t] <- mphi[age[i,t]]
+          p[i,t] <- mean.p[sex[i]]
         } #t
+        p[i,n.markocc] <- mean.p[sex[i]]
       } #i
       
-        for(sx in 1:2) {
-          mphi[2,sx] ~ dnorm(0.42,1/(0.03^2))T(0,1)			### survival of adult males or females
-          mphi[1,sx] ~ dnorm(0.32,1/(0.025^2))T(0,1)		### survival of first year males or females
-        }
-
-      
-      mean.p ~ dunif(0.05, 0.75)                  # resighting probability is the same for all birds
+      for(sx in 1:2) {
+        mean.p[sx] ~ dunif(0.05, 0.95)                  # resighting probability differs between sexes
+      }
 
 
 #--------------------------------------------------
 # 2. Random variation in annual survival and productivity
 #--------------------------------------------------
 # CHANGE THE SCALE OF DEMOGRAPHIC PARAMETERS TO FACILITATE INCORPORATION OF COVARIATES
-l.mphij<-log(mphi[1,2]/(1-mphi[1,2]))	    # juvenile female survival probability on logit scale;
-l.mphia<-log(mphi[2,2]/(1-mphi[2,2]))			# adult female survival probability on logit scale
+l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
+l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
 log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
 log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
 
@@ -107,7 +108,7 @@ for (t in 1:(ncountyears-1)){
       # State process
       z[i,t] ~ dbern(z[i,t-1] * phi[i,t-1])
       # Observation process
-      y.marked[i,t] ~ dbern(z[i,t] * mean.p)
+      y.marked[i,t] ~ dbern(z[i,t] * p[i,t])
     } #t
   } #i
    
