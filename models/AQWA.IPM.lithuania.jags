@@ -1,0 +1,114 @@
+
+model {
+
+#----------------------------------------
+# 1. Define the priors for the parameters
+#----------------------------------------
+
+# Initial population sizes
+
+N1[1] ~ dnorm(3, 0.0001)T(0,)           # 1-year old individuals
+NadSurv[1] ~ dnorm(5, 0.0001)T(0,)      # Adults >= 2 years
+Ntot[1] <- NadSurv[1] + N1[1]	
+
+# DEMOGRAPHIC PARAMETERS INFORMED BY DATA FROM OTHER STUDIES
+mfec1 ~ dnorm(3.2,1/(0.16^2))			   ### fecundity = number of fledglings raised per FIRST brood
+mfec2 ~ dnorm(1.75,1/(0.15^2))			   ### fecundity = number of fledglings raised per SECOND brood, should be slightly lower than first brood
+prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is male and can therefore be counted in population - 56%
+
+
+# SURVIVAL PRIORS FOR AGE AND SEX GROUPS
+
+mphi[2] ~ dnorm(0.42,1/(0.03^2))T(0,1)			### survival of adult birds
+mphi[1] ~ dnorm(0.32,1/(0.025^2))T(0,1)		### survival of first year birds
+      for (i in 1:n.marked){
+        for (t in f[i]:(n.markocc-1)){
+          phi[i,t] <- mphi[age[i,t]]
+          p[i,t] <- mean.p[sex[i]]
+        } #t
+        p[i,n.markocc] <- mean.p[sex[i]]
+      } #i
+      
+      for(sx in 1:2) {
+        mean.p[sx] ~ dunif(0.05, 0.75)                  # resighting probability differs between sexes
+      }
+
+
+#--------------------------------------------------
+# 2. Random variation in annual survival and productivity
+#--------------------------------------------------
+# CHANGE THE SCALE OF DEMOGRAPHIC PARAMETERS TO FACILITATE INCORPORATION OF COVARIATES
+l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
+l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
+log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
+log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
+
+# RANDOM ANNUAL EFFECTS ON SURVIVAL AND PRODUCTIVITY
+
+tau.surv<-1/pow(sigma.surv,2)
+sigma.surv~dunif(0,5)
+
+tau.prod <- pow(sigma.prod, -2)
+sigma.prod ~ dunif(0,2)
+
+for (t in 1:(ncountyears)){
+   eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
+   eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
+   logit(phij[t]) <- l.mphij+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any)
+   logit(phia[t]) <- l.mphia+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any) 
+   log(fec1[t]) <- log.mfec1 + eps.fec[t]     # add random effect
+   log(fec2[t]) <- log.mfec2 + eps.fec[t]     # To use the same eps for both
+   db[t] ~ dnorm(0.25,1/(0.05^2))T(0,1)       # proportion of females breeding twice
+}
+
+
+#-----------------------
+# 3. Derived parameters
+#-----------------------
+
+# Population growth rate
+for (t in 1:(ncountyears-1)){
+   lambda[t] <- Ntot[t+1] / max(1,Ntot[t]) # prevent invalid parent error when Ntot=0
+   loglambda[t]<-log(lambda[t])## for calculating geometric mean of overall population growth rate
+}
+    #### OVERALL POPULATION GROWTH RATE  #########
+    mean.lambda<-exp((1/(ncountyears-1))*sum(loglambda[1:(ncountyears-1)]))   # Geometric mean
+
+
+#--------------------------------------------
+# 4. Likelihood for population count data
+#--------------------------------------------
+   # 4.1 System process
+   for (t in 2:ncountyears){
+        
+    Nfem.breed2[t-1] ~ dbin(db[t-1],round((Ntot[t-1])*(1-prop.males)))    
+    chicks[t-1] <- (Ntot[t-1])*(1-prop.males)* fec1[t-1]  + Nfem.breed2[t-1]*fec2[t-1]  # total fecundity
+    chicksrd[t-1] <- round(chicks[t-1]) + releases[t]
+		N1[t] ~ dbin(phij[t-1],chicksrd[t-1]) 
+		NadSurv[t] ~ dbin(phia[t-1],round((Ntot[t-1])))
+		Ntot[t] <- NadSurv[t] + N1[t]								## total population	
+		
+	}
+
+   # 4.2 Observation process
+   for (t in 1:(ncountyears-4)){    ### curtail likelihood so that last few years are only projection
+	
+	      Ntotobs[t] <- max(1,(Ntot[t]))*prop.males								## only males are counted, which is 56% of population
+	      Ntotrd[t] <- round(Ntotobs[t])
+        y[t] ~ dpois(Ntotrd[t])
+        
+   }
+   
+   # 4.3 Survival estimation
+   for (i in 1:n.marked){
+    # Define latent state at first capture
+    z[i,f[i]] <- 1
+    for (t in (f[i]+1):n.markocc){
+      # State process
+      z[i,t] ~ dbern(z[i,t-1] * phi[i,t-1])
+      # Observation process
+      y.marked[i,t] ~ dbern(z[i,t] * p[i,t])
+    } #t
+  } #i
+}
+

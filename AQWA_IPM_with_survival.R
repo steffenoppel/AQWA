@@ -193,7 +193,7 @@ mphi[1] ~ dnorm(0.32,1/(0.025^2))T(0,1)		### survival of first year birds
       } #i
       
       for(sx in 1:2) {
-        mean.p[sx] ~ dunif(0.05, 0.95)                  # resighting probability differs between sexes
+        mean.p[sx] ~ dunif(0.05, 0.75)                  # resighting probability differs between sexes
       }
 
 
