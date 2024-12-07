@@ -484,12 +484,12 @@ ntotdf$year <- factor(ntotdf$year)
 poptrends <- ggplot(data = ntotdf, aes(x = year, y = Ntot, col = Scenario, group = Scenario)) +
   geom_line(linewidth = 1.1) + geom_vline(aes(xintercept = 23), linetype = 2) +
   geom_ribbon(aes(ymin = cim, ymax = cip), linetype = 2, fill = NA) +
-  facet_wrap(~Scenario, nrow = 5)  +
+  facet_wrap(~Scenario, nrow = 5, scales="free_y")  +
   theme_bw() +
   theme(legend.position = "none") +
   scale_x_discrete(breaks = seq(from = 0, to = 42, by = 6)) + xlab("") + ylab("")
 poptrends
-#ggsave("output/Scenario_projections.jpg", width=181,height=141, quality=100, units="mm")
+#ggsave("output/Scenario_projections.jpg", width=241,height=191, quality=100, units="mm")
 
 
 # Extinction probability (could plot this as well)
