@@ -619,8 +619,9 @@ names(fut.ext)<- rep(c("Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habita
 
 
 fut.ext %>%
-  gather(key="Scenario",value="N") %>%
-  mutate(survival=rep(c("no survival improvement","5% survival improvement"), each=(nscenarios/2)*40000)) %>%
+  pivot_longer(names(fut.ext), names_to = "Scenario", values_to = "N") %>%
+  #gather(key="Scenario",value="N") %>%
+  mutate(survival=rep(rep(c("no survival improvement","5% survival improvement"), each=(nscenarios)),40000)) %>%
   filter(!(str_detect(pattern="20y", string=Scenario))) %>%
   filter(Scenario!="Past trajectory without mowing") %>%
   group_by(Scenario,survival) %>%
@@ -635,9 +636,9 @@ fut.ext %>%
   scale_fill_discrete() +
   
   theme(panel.background=element_rect(fill="white", colour="black"), 
-        axis.text.y=element_text(size=14, color="black"),
+        axis.text.y=element_text(size=12, color="black"),
         axis.text.x=element_blank(), 
-        axis.title=element_text(size=16),
+        axis.title=element_text(size=14),
         strip.text=element_text(size=14, color="black"),
         strip.background=element_rect(fill="white", colour="black"),
         legend.text=element_text(size=10),
@@ -649,7 +650,7 @@ fut.ext %>%
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Extinction_probability.jpg", width=231,height=191, quality=100, units="mm")
+ggsave("output/Extinction_probability.jpg", width=351,height=191, quality=100, units="mm")
 
 
 
@@ -675,14 +676,14 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
   dplyr::select(tidyselect::starts_with("proj.lambda")) %>%
   rename(nochange=`proj.lambda[1]`,
          no.mowing.unlim.hab=`proj.lambda[4]`,
-         no.mowing.lim.hab.200=`proj.lambda[7]`,
-         no.mowing.lim.hab.1200=`proj.lambda[13]`) %>%
+         no.mowing.lim.hab.200=`proj.lambda[26]`,
+         no.mowing.lim.hab.1200=`proj.lambda[32]`) %>%
   dplyr::select(-tidyselect::starts_with("proj.lambda")) %>%
   gather(key="Scenario",value="lambda") %>%
   filter(lambda>0.5) %>% ## remove bizarre growth rates caused by extinct populations?
-  mutate(Scenario=if_else(Scenario=="no.mowing.lim.hab.200", "no mowing - 200 ha habitat",
-                          if_else(Scenario=="nochange", "with current mowing pressure",
-                          if_else(Scenario=="no.mowing.unlim.hab","no mowing - unlimited habitat","no mowing - 1200 ha habitat")))) %>%
+  mutate(Scenario=if_else(Scenario=="no.mowing.lim.hab.200", "improved survival, no mowing, 200 ha habitat",
+                          if_else(Scenario=="nochange", "current mowing pressure and survival",
+                          if_else(Scenario=="no.mowing.unlim.hab","current survival and no mowing","improved survival, no mowing, 1200 ha habitat")))) %>%
   
   ### start the plot ###
   ggplot(aes(x = lambda, fill = Scenario)) +                       # Draw overlaying histogram
@@ -702,13 +703,13 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
         legend.text=element_text(size=12),
         legend.title = element_text(size=14),
         legend.position="inside",
-        legend.position.inside=c(0.64,0.88),
+        legend.position.inside=c(0.74,0.88),
         panel.grid.major = element_line(size=.1, color="grey94"),
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Future_pop_growth_rates.jpg", width=181,height=141, quality=100, units="mm")
+ggsave("output/Future_pop_growth_rates.jpg", width=235,height=181, quality=100, units="mm")
 
 
 
