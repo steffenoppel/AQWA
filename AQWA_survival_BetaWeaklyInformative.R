@@ -125,7 +125,7 @@ nc <- 4
 surv.model <- jags(jags.data,
                    inits,
                    parameters,
-                   "models/AQWA.surv.age.sex.det.jags",
+                   "models/AQWA.surv.age.sex.de.beta.jags",
                    n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
