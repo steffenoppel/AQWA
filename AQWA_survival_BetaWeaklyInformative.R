@@ -63,7 +63,7 @@ jags.data <- list(nind=dim(AW_CH)[1],
 ### tried 3 model formulations: constant, sex.det, and age.sex, and DIC is lowest for age.sex
 
 
-sink("models/AQWA.surv.age.sex.det.jags")
+sink("models/AQWA.surv.age.sex.det.beta.jags")
 cat("
     model {
       # Priors and constraints
