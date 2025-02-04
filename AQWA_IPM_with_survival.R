@@ -25,32 +25,34 @@
 
 # updated by Steffen on 7 Dec 2024 to include more scenarios and updated priors for fecundity
 
+# updated by Steffen on 4 Feb 2025 to adjust projection horizon to 25 years and releases to 5,10,15 years
+
 #The projection scenarios are the following:
 # RUN EACH SCENARIO WITH AND WITHOUT IMPROVED SURVIVAL
 
 #1) Mowing (habitat unconstrained) + 5 release years
 #2) Mowing (habitat unconstrained) + 10 release years
-#3) Mowing (habitat unconstrained) + 20 release years
+#3) Mowing (habitat unconstrained) + 15 release years
 
 #4) No mowing (habitat unconstrained) + 5 release years
 #5) No mowing (habitat unconstrained) + 10 release years
-#6) No mowing (habitat unconstrained) + 20 release years
+#6) No mowing (habitat unconstrained) + 15 release years
 
 #7) No mowing + habitat constrained 200ha + 5 release years
 #8) No mowing + habitat constrained 200ha + 10 release years
-#9) No mowing + habitat constrained 200ha + 20 release years
+#9) No mowing + habitat constrained 200ha + 15 release years
 
 #10) No mowing + habitat constrained 400ha + 5 release years
 #11) No mowing + habitat constrained 400ha + 10 release years
-#12) No mowing + habitat constrained 400ha + 20 release years
+#12) No mowing + habitat constrained 400ha + 15 release years
 
 #13) No mowing + habitat constrained 1200ha + 5 release years
 #14) No mowing + habitat constrained 1200ha + 10 release years
-#15) No mowing + habitat constrained 1200ha + 20 release years
+#15) No mowing + habitat constrained 1200ha + 15 release years
 
 #16) No mowing + habitat constrained 2400ha + 5 release years
 #17) No mowing + habitat constrained 2400ha + 10 release years
-#18) No mowing + habitat constrained 2400ha + 20 release years
+#18) No mowing + habitat constrained 2400ha + 15 release years
 
 #19) No mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario)
 
@@ -109,12 +111,13 @@ age.mat[,3:5]<-2
 nscenarios <- 19
 
 #Number of years for the projections into the future
-nprojyears <- 20
+nprojyears <- 25
 
 #Number of birds released, per scenario and year
 releases <- matrix(nrow = nscenarios, ncol = nprojyears, data = 50)
-releases[c(1,4,7,10,13,16), 6:20] <- 0
-releases[c(2,5,8,11,14,17), 11:20] <- 0
+releases[c(1,4,7,10,13,16), 6:25] <- 0
+releases[c(2,5,8,11,14,17), 11:25] <- 0
+releases[c(3,6,9,12,15,18), 16:25] <- 0
 releases[19, ] <- 0
 releases <- rbind(releases,releases)  ## double to include with and without survival improvement
 
@@ -364,27 +367,27 @@ for (t in 1:(ncountyears-1)){
 
 #1) Mowing (habitat unconstrained) + 5 release years
 #2) Mowing (habitat unconstrained) + 10 release years
-#3) Mowing (habitat unconstrained) + 20 release years
+#3) Mowing (habitat unconstrained) + 15 release years
 
 #4) No mowing (habitat unconstrained) + 5 release years
 #5) No mowing (habitat unconstrained) + 10 release years
-#6) No mowing (habitat unconstrained) + 20 release years
+#6) No mowing (habitat unconstrained) + 15 release years
 
 #7) No mowing + habitat constrained 200ha + 5 release years
 #8) No mowing + habitat constrained 200ha + 10 release years
-#9) No mowing + habitat constrained 200ha + 20 release years
+#9) No mowing + habitat constrained 200ha + 15 release years
 
 #10) No mowing + habitat constrained 400ha + 5 release years
 #11) No mowing + habitat constrained 400ha + 10 release years
-#12) No mowing + habitat constrained 400ha + 20 release years
+#12) No mowing + habitat constrained 400ha + 15 release years
 
 #13) No mowing + habitat constrained 1200ha + 5 release years
 #14) No mowing + habitat constrained 1200ha + 10 release years
-#15) No mowing + habitat constrained 1200ha + 20 release years
+#15) No mowing + habitat constrained 1200ha + 15 release years
 
 #16) No mowing + habitat constrained 2400ha + 5 release years
 #17) No mowing + habitat constrained 2400ha + 10 release years
-#18) No mowing + habitat constrained 2400ha + 20 release years
+#18) No mowing + habitat constrained 2400ha + 15 release years
 
 #19) No mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario)
 
@@ -502,38 +505,38 @@ ipm.model <- jags(jags.data,
 ntotdf <- data.frame(Ntot = numeric(length = length(ipm.model$mean$Ntot)),
                      cip = numeric(length = length(ipm.model$mean$Ntot)),
                      cim = numeric(length = length(ipm.model$mean$Ntot)),
-                     Scenario = c(rep("Mowing + 5y Habitat Unconstrained", 42),
-                                  rep("Mowing + 10y Habitat Unconstrained", 42),
-                                  rep("Mowing + 20y Habitat Unconstrained", 42),
-                                  rep("No mowing + 5y Habitat Unconstrained", 42),
-                                  rep("No mowing + 10y Habitat Unconstrained", 42),
-                                  rep("No mowing + 20y Habitat Unconstrained", 42),
-                                  rep("No mowing + 5y Habitat Constrained 200 ha", 42),
-                                  rep("No mowing + 10y Habitat Constrained 200 ha", 42),
-                                  rep("No mowing + 20y Habitat Constrained 200 ha", 42),
-                                  rep("No mowing + 5y Habitat Constrained 400 ha", 42),
-                                  rep("No mowing + 10y Habitat Constrained 400 ha", 42),
-                                  rep("No mowing + 20y Habitat Constrained 400 ha", 42),
-                                  rep("No mowing + 5y Habitat Constrained 1200 ha", 42),
-                                  rep("No mowing + 10y Habitat Constrained 1200 ha", 42),
-                                  rep("No mowing + 20y Habitat Constrained 1200 ha", 42),
-                                  rep("No mowing + 5y Habitat Constrained 2400 ha", 42),
-                                  rep("No mowing + 10y Habitat Constrained 2400 ha", 42),
-                                  rep("No mowing + 20y Habitat Constrained 2400 ha", 42),
-                                  rep("Past trajectory without mowing", 42)),
-                     survival=rep(c("no survival improvement","5% survival improvement"), each=nscenarios*42),
-                     year = rep(1:42, nscenarios*2))
+                     Scenario = c(rep("Mowing + 5y Habitat Unconstrained", 47),
+                                  rep("Mowing + 10y Habitat Unconstrained", 47),
+                                  rep("Mowing + 15y Habitat Unconstrained", 47),
+                                  rep("No mowing + 5y Habitat Unconstrained", 47),
+                                  rep("No mowing + 10y Habitat Unconstrained", 47),
+                                  rep("No mowing + 15y Habitat Unconstrained", 47),
+                                  rep("No mowing + 5y Habitat Constrained 200 ha", 47),
+                                  rep("No mowing + 10y Habitat Constrained 200 ha", 47),
+                                  rep("No mowing + 15y Habitat Constrained 200 ha", 47),
+                                  rep("No mowing + 5y Habitat Constrained 400 ha", 47),
+                                  rep("No mowing + 10y Habitat Constrained 400 ha", 47),
+                                  rep("No mowing + 15y Habitat Constrained 400 ha", 47),
+                                  rep("No mowing + 5y Habitat Constrained 1200 ha", 47),
+                                  rep("No mowing + 10y Habitat Constrained 1200 ha", 47),
+                                  rep("No mowing + 15y Habitat Constrained 1200 ha", 47),
+                                  rep("No mowing + 5y Habitat Constrained 2400 ha", 47),
+                                  rep("No mowing + 10y Habitat Constrained 2400 ha", 47),
+                                  rep("No mowing + 15y Habitat Constrained 2400 ha", 47),
+                                  rep("Past trajectory without mowing", 47)),
+                     survival=rep(c("no survival improvement","5% survival improvement"), each=nscenarios*47),
+                     year = rep(1:47, nscenarios*2))
 
 ntotdf$Ntot <- as.numeric(t(ipm.model$mean$Ntot))
 ntotdf$cim <- as.numeric(t(ipm.model$q2.5$Ntot))
 ntotdf$cip <- as.numeric(t(ipm.model$q97.5$Ntot))
 
-ntotdf$Scenario <- factor(ntotdf$Scenario, levels = c("Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habitat Unconstrained", "Mowing + 20y Habitat Unconstrained",
-                                                      "No mowing + 5y Habitat Unconstrained", "No mowing + 10y Habitat Unconstrained","No mowing + 20y Habitat Unconstrained",
-                                                      "No mowing + 5y Habitat Constrained 200 ha", "No mowing + 10y Habitat Constrained 200 ha","No mowing + 20y Habitat Constrained 200 ha",
-                                                      "No mowing + 5y Habitat Constrained 400 ha", "No mowing + 10y Habitat Constrained 400 ha","No mowing + 20y Habitat Constrained 400 ha",
-                                                      "No mowing + 5y Habitat Constrained 1200 ha", "No mowing + 10y Habitat Constrained 1200 ha","No mowing + 20y Habitat Constrained 1200 ha",
-                                                      "No mowing + 5y Habitat Constrained 2400 ha", "No mowing + 10y Habitat Constrained 2400 ha","No mowing + 20y Habitat Constrained 2400 ha",
+ntotdf$Scenario <- factor(ntotdf$Scenario, levels = c("Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habitat Unconstrained", "Mowing + 15y Habitat Unconstrained",
+                                                      "No mowing + 5y Habitat Unconstrained", "No mowing + 10y Habitat Unconstrained","No mowing + 15y Habitat Unconstrained",
+                                                      "No mowing + 5y Habitat Constrained 200 ha", "No mowing + 10y Habitat Constrained 200 ha","No mowing + 15y Habitat Constrained 200 ha",
+                                                      "No mowing + 5y Habitat Constrained 400 ha", "No mowing + 10y Habitat Constrained 400 ha","No mowing + 15y Habitat Constrained 400 ha",
+                                                      "No mowing + 5y Habitat Constrained 1200 ha", "No mowing + 10y Habitat Constrained 1200 ha","No mowing + 15y Habitat Constrained 1200 ha",
+                                                      "No mowing + 5y Habitat Constrained 2400 ha", "No mowing + 10y Habitat Constrained 2400 ha","No mowing + 15y Habitat Constrained 2400 ha",
                                                       "Past trajectory without mowing"))
 
 #ntotdf$year <- factor(ntotdf$year)
@@ -607,14 +610,14 @@ ny <- jags.data$ncountyears
 
 fut.ext<-as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[[3]],ipm.model$samples[[4]])) %>%
   dplyr::select(tidyselect::starts_with("Ntot")) %>%
-  dplyr::select(tidyselect::ends_with(",42]"))
+  dplyr::select(tidyselect::ends_with(",47]"))
 
-names(fut.ext)<- rep(c("Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habitat Unconstrained", "Mowing + 20y Habitat Unconstrained",
-                   "No mowing + 5y Habitat Unconstrained", "No mowing + 10y Habitat Unconstrained","No mowing + 20y Habitat Unconstrained",
-                   "No mowing + 5y Habitat Constrained 200 ha", "No mowing + 10y Habitat Constrained 200 ha","No mowing + 20y Habitat Constrained 200 ha",
-                   "No mowing + 5y Habitat Constrained 400 ha", "No mowing + 10y Habitat Constrained 400 ha","No mowing + 20y Habitat Constrained 400 ha",
-                   "No mowing + 5y Habitat Constrained 1200 ha", "No mowing + 10y Habitat Constrained 1200 ha","No mowing + 20y Habitat Constrained 1200 ha",
-                   "No mowing + 5y Habitat Constrained 2400 ha", "No mowing + 10y Habitat Constrained 2400 ha","No mowing + 20y Habitat Constrained 2400 ha",
+names(fut.ext)<- rep(c("Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habitat Unconstrained", "Mowing + 15y Habitat Unconstrained",
+                   "No mowing + 5y Habitat Unconstrained", "No mowing + 10y Habitat Unconstrained","No mowing + 15y Habitat Unconstrained",
+                   "No mowing + 5y Habitat Constrained 200 ha", "No mowing + 10y Habitat Constrained 200 ha","No mowing + 15y Habitat Constrained 200 ha",
+                   "No mowing + 5y Habitat Constrained 400 ha", "No mowing + 10y Habitat Constrained 400 ha","No mowing + 15y Habitat Constrained 400 ha",
+                   "No mowing + 5y Habitat Constrained 1200 ha", "No mowing + 10y Habitat Constrained 1200 ha","No mowing + 15y Habitat Constrained 1200 ha",
+                   "No mowing + 5y Habitat Constrained 2400 ha", "No mowing + 10y Habitat Constrained 2400 ha","No mowing + 15y Habitat Constrained 2400 ha",
                    "Past trajectory without mowing"), 2)
 
 
@@ -622,7 +625,7 @@ fut.ext %>%
   pivot_longer(names(fut.ext), names_to = "Scenario", values_to = "N") %>%
   #gather(key="Scenario",value="N") %>%
   mutate(survival=rep(rep(c("no survival improvement","5% survival improvement"), each=(nscenarios)),40000)) %>%
-  filter(!(str_detect(pattern="20y", string=Scenario))) %>%
+  filter(!(str_detect(pattern="15y", string=Scenario))) %>%
   filter(Scenario!="Past trajectory without mowing") %>%
   group_by(Scenario,survival) %>%
   summarize(ext.prob=w0(N)) %>%

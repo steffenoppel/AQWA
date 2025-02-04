@@ -161,27 +161,27 @@ for (t in 1:(ncountyears-1)){
 
 #1) Mowing (habitat unconstrained) + 5 release years
 #2) Mowing (habitat unconstrained) + 10 release years
-#3) Mowing (habitat unconstrained) + 20 release years
+#3) Mowing (habitat unconstrained) + 15 release years
 
 #4) No mowing (habitat unconstrained) + 5 release years
 #5) No mowing (habitat unconstrained) + 10 release years
-#6) No mowing (habitat unconstrained) + 20 release years
+#6) No mowing (habitat unconstrained) + 15 release years
 
 #7) No mowing + habitat constrained 200ha + 5 release years
 #8) No mowing + habitat constrained 200ha + 10 release years
-#9) No mowing + habitat constrained 200ha + 20 release years
+#9) No mowing + habitat constrained 200ha + 15 release years
 
 #10) No mowing + habitat constrained 400ha + 5 release years
 #11) No mowing + habitat constrained 400ha + 10 release years
-#12) No mowing + habitat constrained 400ha + 20 release years
+#12) No mowing + habitat constrained 400ha + 15 release years
 
 #13) No mowing + habitat constrained 1200ha + 5 release years
 #14) No mowing + habitat constrained 1200ha + 10 release years
-#15) No mowing + habitat constrained 1200ha + 20 release years
+#15) No mowing + habitat constrained 1200ha + 15 release years
 
 #16) No mowing + habitat constrained 2400ha + 5 release years
 #17) No mowing + habitat constrained 2400ha + 10 release years
-#18) No mowing + habitat constrained 2400ha + 20 release years
+#18) No mowing + habitat constrained 2400ha + 15 release years
 
 #19) No mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario)
 
