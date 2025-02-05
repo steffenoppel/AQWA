@@ -163,7 +163,7 @@ jags.data <- list(ncountyears = length(years-1),
                   age=age.mat,
                   f=f,
                   sex=as.numeric(AW_CH$sex),
-                  y.mark = as.matrix(AW_CH[,3:7]))
+                  y.marked = as.matrix(AW_CH[,3:7]))
 
 #Caution, we're missing data from year 2024, that leads to an error in the model. Let's add it manually.
 jags.data$y[22] <- 3
@@ -224,8 +224,8 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
-mphi[2] ~ dnorm(0.42,1/(0.03^2))T(0,1)			### survival of adult birds
-mphi[1] ~ dnorm(0.32,1/(0.025^2))T(0,1)		### survival of first year birds
+mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds
+mphi[1] ~ dbeta(1.2,1.2)		### survival of first year birds
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
           phi[i,t] <- mphi[age[i,t]]
