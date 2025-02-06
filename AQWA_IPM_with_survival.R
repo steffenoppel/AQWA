@@ -195,6 +195,8 @@ db <- rnorm(1e6, 0.25, 0.07)
 quantile(db)
 hist(db)
 
+phi <- rbeta(1e6, 1.2, 1.2)
+hist(phi)
 
 
 ##############################################################################
@@ -203,7 +205,7 @@ hist(db)
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v4.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v6.jags")
 cat("
 model {
 
@@ -417,19 +419,6 @@ for(ns in 4:nscenarios){
   }
 }
 
-# #Females allowed to breed in every scenario
-# # since v4 this is provided with data
-# maxrepf[1:6] <- maxrepm[1:6]
-# 
-# for(ns in 7:nscenarios){
-# 
-#   maxrepf[ns] <- (maxrepm[ns]*(1-prop.males))/prop.males
-# 
-# }
-
-
-#Another variable, nintroyears, specifies the number of years for which the birds are released. It is already provided in the data.
-
 ### INCLUDE SCENARIOS FOR N CAPTIVE BIRDS AND NUMBER OF YEARS
     
     ## POPULATION PROCESS
@@ -473,7 +462,7 @@ sink()
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
   mean.p = runif(2, 0.2,0.7),
-  mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),
+  mphi= c(rbeta(2, 1.2,1.2)),
   mfec1 = runif(1, 2.8,3.8),
   mfec2 = runif(1, 1.9,3.0))}
 
@@ -483,9 +472,9 @@ parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "phij"
 
 
 # MCMC settings
-ni <- 75000
+ni <- 250000
 nt <- 5
-nb <- 25000
+nb <- 125000
 nc <- 4
 
 
@@ -493,7 +482,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v4.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v6.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
@@ -803,7 +792,7 @@ out<-as.data.frame(ipm.model$summary)
 out$parameter<-row.names(ipm.model$summary)
 names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v4.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v6.csv", sep=",")
 
 
 
