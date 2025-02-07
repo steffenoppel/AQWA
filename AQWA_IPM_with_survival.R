@@ -27,6 +27,14 @@
 
 # updated by Steffen on 4 Feb 2025 to adjust projection horizon to 25 years and releases to 5,10,15 years
 
+
+## better priors needed for survival (from other migratory Acrocephalus warblers)
+# Apparent survival for males (ϕ=0.26±0.06, CI 0.18−0.41) was higher than that for females (ϕ=0.18±0.07, CI 0.08–0.36) from https://www.tandfonline.com/doi/full/10.1080/00063657.2018.1448366#d1e445
+# Annual adult survival ranged from 0.69 ± 0.05 to 0.88 ± 0.03 from https://bioone.org/journals/ardea/volume-103/issue-2/arde.v103i2.a5/Climatic-Influences-on-Survival-of-Migratory-African-Reed-Warblers-Acrocephalus/10.5253/arde.v103i2.a5.full
+# survival rates were 60.3 ± 6.0 (se) for males and 54.9 ± 10.3 for females. Survival rates at Site B were 32.9 ± 16.0 for males and 52.0 ± 22.4 for females from https://www.tandfonline.com/doi/abs/10.1080/03078698.2006.9674347
+# 
+
+
 #The projection scenarios are the following:
 # RUN EACH SCENARIO WITH AND WITHOUT IMPROVED SURVIVAL
 
@@ -195,7 +203,7 @@ db <- rnorm(1e6, 0.25, 0.07)
 quantile(db)
 hist(db)
 
-phi <- rbeta(1e6, 1.2, 1.2)
+phi <- rnorm(1e6, 0.54, 0.2)
 hist(phi)
 
 
@@ -462,7 +470,7 @@ sink()
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
   mean.p = runif(2, 0.2,0.7),
-  mphi= c(rbeta(2, 1.2,1.2)),
+  mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),    ## using rbeta results in crazy output and model does not converge at all
   mfec1 = runif(1, 2.8,3.8),
   mfec2 = runif(1, 1.9,3.0))}
 
@@ -472,9 +480,9 @@ parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "phij"
 
 
 # MCMC settings
-ni <- 250000
-nt <- 5
-nb <- 125000
+ni <- 750000
+nt <- 50
+nb <- 250000
 nc <- 4
 
 
@@ -484,6 +492,18 @@ ipm.model <- jags(jags.data,
                   parameters,
                   "models/AQWA.IPM.surv.Scenarios.v6.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
+
+
+############################################################################
+# CHECK CONVERGENCE AND WRITE ALL OUTPUT INTO A TEXT FILE ----
+##############################################################################
+out<-as.data.frame(ipm.model$summary)  
+out$parameter<-row.names(ipm.model$summary)
+names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
+print(ipm.model, dig=3)
+out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v6.csv", sep=",")
+
 
 
 
@@ -782,17 +802,6 @@ ggsave("output/Future_pop_growth_rates.jpg", width=235,height=181, quality=100, 
 # lines(p2result, type = "l", lty = "dashed", col = "blue", lwd = 2)
 # 
 # #Compared to models where we allowed second broods, here the change in the estimates is very very mild.
-
-############################################################################
-#
-# WRITE ALL OUTPUT INTO A TEXT FILE ----
-# 
-##############################################################################
-out<-as.data.frame(ipm.model$summary)  
-out$parameter<-row.names(ipm.model$summary)
-names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
-print(ipm.model, dig=3)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v6.csv", sep=",")
 
 
 
