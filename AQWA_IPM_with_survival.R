@@ -253,10 +253,10 @@ mphi[1] ~ dbeta(1.2,1.2)		### survival of first year birds
 # 2. Random variation in annual survival and productivity
 #--------------------------------------------------
 # CHANGE THE SCALE OF DEMOGRAPHIC PARAMETERS TO FACILITATE INCORPORATION OF COVARIATES
-l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
-l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
-log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
-log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
+# l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
+# l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
+# log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
+# log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
 
 # RANDOM ANNUAL EFFECTS ON SURVIVAL AND PRODUCTIVITY
 
@@ -266,23 +266,27 @@ log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
 # tau.prod <- pow(sigma.prod, -2)
 # sigma.prod ~ dunif(0,2)
 
-tau.ann <- pow(sigma.ann, -2)
-sigma.ann ~ dunif(0,2)
+# tau.ann <- pow(sigma.ann, -2)
+# sigma.ann ~ dunif(0,2)
 
 for (t in 1:(ncountyears+nprojyears)){
    # eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
    # eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
-   eps.ann[t] ~ dnorm(0, tau.ann)            # random variation around productivity
-   logit(phij[t]) <- l.mphij+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
-   logit(phia[t]) <- l.mphia+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any) 
-   log(fec1[t]) <- log.mfec1 + eps.ann[t]     # add random effect
+   #eps.ann[t] ~ dnorm(0, tau.ann)            # random variation around productivity
+   # logit(phij[t]) <- l.mphij+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
+   # logit(phia[t]) <- l.mphia+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
+   phij[t] <- mphi[1]			# fixed effect for every occasion - no temporal variability
+   phia[t] <- mphi[2]			# fixed effect for every occasion - no temporal variability
+   #log(fec1[t]) <- log.mfec1 + eps.ann[t]     # add random effect
+   fec1[t] <-mfec1
 }
 
 #Fec 2, the fecundity of second broods, is only applied to future scenarios now
 
 for(t in 1:nprojyears){
 
-  log(fec2[t]) <- log.mfec2 + eps.ann[t+ncountyears] #To use the same eps for both
+  #log(fec2[t]) <- log.mfec2 + eps.ann[t+ncountyears] #To use the same eps for both
+  fec2[t]<-mfec2
   
 }
 
@@ -479,7 +483,7 @@ inits <- function(){list(
   mfec2 = runif(1, 1.9,3.0))}
 
 # Parameters monitored
-parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "phij", "phia", "fec1", "fec2", "db", "Nfemdb",
+parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "db", "Nfemdb",
                 "proj.lambda","mean.p")
 
 
