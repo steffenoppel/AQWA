@@ -510,7 +510,7 @@ out$parameter<-row.names(ipm.model$summary)
 names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
 out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v6.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v7.csv", sep=",")
 
 
 
@@ -723,7 +723,7 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
         legend.text=element_text(size=12),
         legend.title = element_text(size=14),
         legend.position="inside",
-        legend.position.inside=c(0.74,0.88),
+        legend.position.inside=c(0.14,0.88),
         panel.grid.major = element_line(size=.1, color="grey94"),
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))
