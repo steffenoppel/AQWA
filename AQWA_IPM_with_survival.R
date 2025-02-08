@@ -67,8 +67,8 @@
 
 rm(list=ls())
 library(popbio)
-library(doParallel)
-library(foreach)
+# library(doParallel)
+# library(foreach)
 library(tidyverse)
 library(data.table)
 library(jagsUI)
@@ -213,7 +213,7 @@ hist(phi)
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v6.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v7.jags")
 cat("
 model {
 
@@ -260,25 +260,29 @@ log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
 
 # RANDOM ANNUAL EFFECTS ON SURVIVAL AND PRODUCTIVITY
 
-tau.surv<-1/pow(sigma.surv,2)
-sigma.surv~dunif(0,5)
+# tau.surv<-1/pow(sigma.surv,2)
+# sigma.surv~dunif(0,5)
+# 
+# tau.prod <- pow(sigma.prod, -2)
+# sigma.prod ~ dunif(0,2)
 
-tau.prod <- pow(sigma.prod, -2)
-sigma.prod ~ dunif(0,2)
+tau.ann <- pow(sigma.ann, -2)
+sigma.ann ~ dunif(0,2)
 
 for (t in 1:(ncountyears+nprojyears)){
-   eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
-   eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
-   logit(phij[t]) <- l.mphij+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any)
-   logit(phia[t]) <- l.mphia+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any) 
-   log(fec1[t]) <- log.mfec1 + eps.fec[t]     # add random effect
+   # eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
+   # eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
+   eps.ann[t] ~ dnorm(0, tau.ann)            # random variation around productivity
+   logit(phij[t]) <- l.mphij+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
+   logit(phia[t]) <- l.mphia+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any) 
+   log(fec1[t]) <- log.mfec1 + eps.ann[t]     # add random effect
 }
 
 #Fec 2, the fecundity of second broods, is only applied to future scenarios now
 
 for(t in 1:nprojyears){
 
-  log(fec2[t]) <- log.mfec2 + eps.fec[t+ncountyears] #To use the same eps for both
+  log(fec2[t]) <- log.mfec2 + eps.ann[t+ncountyears] #To use the same eps for both
   
 }
 
@@ -480,9 +484,9 @@ parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "phij"
 
 
 # MCMC settings
-ni <- 750000
-nt <- 50
-nb <- 250000
+ni <- 75000
+nt <- 5
+nb <- 25000
 nc <- 4
 
 
@@ -490,7 +494,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v6.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v7.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
