@@ -27,6 +27,14 @@
 
 # updated by Steffen on 4 Feb 2025 to adjust projection horizon to 25 years and releases to 5,10,15 years
 
+
+## better priors needed for survival (from other migratory Acrocephalus warblers)
+# Apparent survival for males (ϕ=0.26±0.06, CI 0.18−0.41) was higher than that for females (ϕ=0.18±0.07, CI 0.08–0.36) from https://www.tandfonline.com/doi/full/10.1080/00063657.2018.1448366#d1e445
+# Annual adult survival ranged from 0.69 ± 0.05 to 0.88 ± 0.03 from https://bioone.org/journals/ardea/volume-103/issue-2/arde.v103i2.a5/Climatic-Influences-on-Survival-of-Migratory-African-Reed-Warblers-Acrocephalus/10.5253/arde.v103i2.a5.full
+# survival rates were 60.3 ± 6.0 (se) for males and 54.9 ± 10.3 for females. Survival rates at Site B were 32.9 ± 16.0 for males and 52.0 ± 22.4 for females from https://www.tandfonline.com/doi/abs/10.1080/03078698.2006.9674347
+# 
+
+
 #The projection scenarios are the following:
 # RUN EACH SCENARIO WITH AND WITHOUT IMPROVED SURVIVAL
 
@@ -59,8 +67,8 @@
 
 rm(list=ls())
 library(popbio)
-library(doParallel)
-library(foreach)
+# library(doParallel)
+# library(foreach)
 library(tidyverse)
 library(data.table)
 library(jagsUI)
@@ -195,7 +203,7 @@ db <- rnorm(1e6, 0.25, 0.07)
 quantile(db)
 hist(db)
 
-phi <- rbeta(1e6, 1.2, 1.2)
+phi <- rnorm(1e6, 0.54, 0.2)
 hist(phi)
 
 
@@ -205,7 +213,7 @@ hist(phi)
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v6.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v7.jags")
 cat("
 model {
 
@@ -245,32 +253,40 @@ mphi[1] ~ dbeta(1.2,1.2)		### survival of first year birds
 # 2. Random variation in annual survival and productivity
 #--------------------------------------------------
 # CHANGE THE SCALE OF DEMOGRAPHIC PARAMETERS TO FACILITATE INCORPORATION OF COVARIATES
-l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
-l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
-log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
-log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
+# l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
+# l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
+# log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
+# log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
 
 # RANDOM ANNUAL EFFECTS ON SURVIVAL AND PRODUCTIVITY
 
-tau.surv<-1/pow(sigma.surv,2)
-sigma.surv~dunif(0,5)
+# tau.surv<-1/pow(sigma.surv,2)
+# sigma.surv~dunif(0,5)
+# 
+# tau.prod <- pow(sigma.prod, -2)
+# sigma.prod ~ dunif(0,2)
 
-tau.prod <- pow(sigma.prod, -2)
-sigma.prod ~ dunif(0,2)
+# tau.ann <- pow(sigma.ann, -2)
+# sigma.ann ~ dunif(0,2)
 
 for (t in 1:(ncountyears+nprojyears)){
-   eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
-   eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
-   logit(phij[t]) <- l.mphij+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any)
-   logit(phia[t]) <- l.mphia+ eps.surv[t]			# add random effect - could add environmental predictors here (if we had any) 
-   log(fec1[t]) <- log.mfec1 + eps.fec[t]     # add random effect
+   # eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
+   # eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
+   #eps.ann[t] ~ dnorm(0, tau.ann)            # random variation around productivity
+   # logit(phij[t]) <- l.mphij+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
+   # logit(phia[t]) <- l.mphia+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
+   phij[t] <- mphi[1]			# fixed effect for every occasion - no temporal variability
+   phia[t] <- mphi[2]			# fixed effect for every occasion - no temporal variability
+   #log(fec1[t]) <- log.mfec1 + eps.ann[t]     # add random effect
+   fec1[t] <-mfec1
 }
 
 #Fec 2, the fecundity of second broods, is only applied to future scenarios now
 
 for(t in 1:nprojyears){
 
-  log(fec2[t]) <- log.mfec2 + eps.fec[t+ncountyears] #To use the same eps for both
+  #log(fec2[t]) <- log.mfec2 + eps.ann[t+ncountyears] #To use the same eps for both
+  fec2[t]<-mfec2
   
 }
 
@@ -462,19 +478,19 @@ sink()
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
   mean.p = runif(2, 0.2,0.7),
-  mphi= c(rbeta(2, 1.2,1.2)),
+  mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),    ## using rbeta results in crazy output and model does not converge at all
   mfec1 = runif(1, 2.8,3.8),
   mfec2 = runif(1, 1.9,3.0))}
 
 # Parameters monitored
-parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "phij", "phia", "fec1", "fec2", "db", "Nfemdb",
+parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "db", "Nfemdb",
                 "proj.lambda","mean.p")
 
 
 # MCMC settings
-ni <- 250000
+ni <- 75000
 nt <- 5
-nb <- 125000
+nb <- 25000
 nc <- 4
 
 
@@ -482,8 +498,20 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v6.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v7.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
+
+
+############################################################################
+# CHECK CONVERGENCE AND WRITE ALL OUTPUT INTO A TEXT FILE ----
+##############################################################################
+out<-as.data.frame(ipm.model$summary)  
+out$parameter<-row.names(ipm.model$summary)
+names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
+print(ipm.model, dig=3)
+out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v7.csv", sep=",")
+
 
 
 
@@ -695,7 +723,7 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
         legend.text=element_text(size=12),
         legend.title = element_text(size=14),
         legend.position="inside",
-        legend.position.inside=c(0.74,0.88),
+        legend.position.inside=c(0.14,0.88),
         panel.grid.major = element_line(size=.1, color="grey94"),
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))
@@ -782,17 +810,6 @@ ggsave("output/Future_pop_growth_rates.jpg", width=235,height=181, quality=100, 
 # lines(p2result, type = "l", lty = "dashed", col = "blue", lwd = 2)
 # 
 # #Compared to models where we allowed second broods, here the change in the estimates is very very mild.
-
-############################################################################
-#
-# WRITE ALL OUTPUT INTO A TEXT FILE ----
-# 
-##############################################################################
-out<-as.data.frame(ipm.model$summary)  
-out$parameter<-row.names(ipm.model$summary)
-names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
-print(ipm.model, dig=3)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v6.csv", sep=",")
 
 
 
