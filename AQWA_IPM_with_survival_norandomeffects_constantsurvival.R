@@ -160,7 +160,6 @@ jags.data <- list(ncountyears = length(years-1),
                   ## add survival data
                   n.marked=dim(AW_CH)[1],
                   n.markocc=dim(AW_CH[,3:7])[2],
-                  age=age.mat,
                   f=f,
                   sex=as.numeric(AW_CH$sex),
                   y.marked = as.matrix(AW_CH[,3:7]))
@@ -203,7 +202,7 @@ hist(db)
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.fixed1.jags")
+sink("models/AQWA.IPM.surv.Scenarios.fixed_constsurv.jags")
 cat("
 model {
 
@@ -224,18 +223,14 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
-mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds
-mphi[1] ~ dbeta(1.2,1.2)			### survival of first year birds
+mphi ~ dbeta(1.2,1.2)
 
-#So that it is easy to code later
-phia <- mphi[2]
-phij <- mphi[1]
 
 #Likelihood of CMR data
 
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
-          phi[i,t] <- mphi[age[i,t]]
+          phi[i,t] <- mphi
           p[i,t] <- mean.p[sex[i]]
         } #t
         p[i,n.markocc] <- mean.p[sex[i]]
@@ -267,8 +262,8 @@ for (t in 1:(ncountyears-1)){
         
       	chicks[1,t-1] <- (Ntot[1,t-1])*(1-prop.males)* mfec1 # total fecundity
       	chicksrd[1,t-1] <- round(chicks[1,t-1])
-		N1[1,t] ~ dbin(phij,chicksrd[1,t-1]) 
-		NadSurv[1,t] ~ dbin(phia,round((Ntot[1,t-1])))
+		N1[1,t] ~ dbin(mphi,chicksrd[1,t-1]) 
+		NadSurv[1,t] ~ dbin(mphi,round((Ntot[1,t-1])))
 	}
 
    # 4.2 Observation process
@@ -421,8 +416,8 @@ for(ns in 4:nscenarios){
 
       	    chicks[ns,t-1] <- Nfem.breed1[ns,t-ncountyears] * mfec1 + Nfem.breed2[ns,t-ncountyears]*mfec2			# total fecundity
       	    chicksrd[ns,t-1] <- round(chicks[ns,t-1]) + releases[ns,t-ncountyears]
-		        N1[ns,t] ~ dbin(min(1,phij*impsurv[ns]),chicksrd[ns,t-1]) 
-		        NadSurv[ns,t] ~ dbin(min(1,phia*impsurv[ns]),round((Ntot[ns,t-1])))
+		        N1[ns,t] ~ dbin(min(1,mphi*impsurv[ns]),chicksrd[ns,t-1]) 
+		        NadSurv[ns,t] ~ dbin(min(1,mphi*impsurv[ns]),round((Ntot[ns,t-1])))
 		   	    Ntot[ns,t] <- NadSurv[ns,t] + N1[ns,t]								## total population	
   	} #Time loop
   	
@@ -447,12 +442,12 @@ sink()
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
   mean.p = runif(2, 0.2,0.7),
-  mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),
+  mphi= .3,
   mfec1 = runif(1, 2.8,3.8),
   mfec2 = runif(1, 1.9,3.0))}
 
 # Parameters monitored
-parameters <- c("Ntot","mfec1","mfec2","mean.lambda","prop.males", "phij", "phia", "db", "Nfemdb",
+parameters <- c("Ntot","mfec1","mfec2","mean.lambda","prop.males", "mphi", "db", "Nfemdb",
                 "proj.lambda","mean.p")
 
 
@@ -466,7 +461,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.fixed1.jags",
+                  "models/AQWA.IPM.surv.Scenarios.fixed_constsurv.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=F)
 
 
@@ -537,7 +532,7 @@ poptrendspast <-
   theme(legend.position = "none") +
   xlab("Year") + ylab("Aquatic Warbler population size")
 poptrendspast
-ggsave("output/Past_population_trajectories.jpg", width=241,height=191, quality=100, units="mm")
+ggsave("output/Past_population_trajectories_constantsurv.jpg", width=241,height=191, quality=100, units="mm")
 
 
 
@@ -556,7 +551,7 @@ poptrends <-
   theme(legend.position = "none") +
   xlab("Year") + ylab("Aquatic Warbler population size")
 poptrends
-#ggsave("output/Scenario_projections.jpg", width=241,height=191, quality=100, units="mm")
+#ggsave("output/Scenario_projections_constantsurv.jpg", width=241,height=191, quality=100, units="mm")
 
 
 # Extinction probability (could plot this as well)
@@ -628,7 +623,7 @@ fut.ext %>%
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Extinction_probability.jpg", width=351,height=191, quality=100, units="mm")
+ggsave("output/Extinction_probability_constantsurv.jpg", width=351,height=191, quality=100, units="mm")
 
 
 
@@ -687,7 +682,7 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Future_pop_growth_rates.jpg", width=235,height=181, quality=100, units="mm")
+ggsave("output/Future_pop_growth_rates_constantsurv.jpg", width=235,height=181, quality=100, units="mm")
 
 
 
@@ -697,16 +692,16 @@ ggsave("output/Future_pop_growth_rates.jpg", width=235,height=181, quality=100, 
 # 
 # #Juvenile survival
 # 
-# plot(ipm.model$mean$phij, type = "l", col = "green", ylim = c(0.18, 0.45), lwd = 2, xlab = "Year", ylab = "Estimate", main = "Juvenile survival")
-# lines(ipm.model$q2.5$phij, lty = "dashed", lwd = 1.5, col = "green")
-# lines(ipm.model$q97.5$phij, lty = "dashed", lwd = 1.5, col = "green")
+# plot(ipm.model$mean$mphi, type = "l", col = "green", ylim = c(0.18, 0.45), lwd = 2, xlab = "Year", ylab = "Estimate", main = "Juvenile survival")
+# lines(ipm.model$q2.5$mphi, lty = "dashed", lwd = 1.5, col = "green")
+# lines(ipm.model$q97.5$mphi, lty = "dashed", lwd = 1.5, col = "green")
 # abline(v = ny, lty = "dashed")
 # 
 # #Adult survival
 # 
-# plot(ipm.model$mean$phia, type = "l", col = "green", ylim = c(0.25,0.6), lwd = 2, xlab = "Year", ylab = "Estimate", main = "Adult survival")
-# lines(ipm.model$q2.5$phia, lty = "dashed", lwd = 1.5, col = "green")
-# lines(ipm.model$q97.5$phia, lty = "dashed", lwd = 1.5, col = "green")
+# plot(ipm.model$mean$mphi, type = "l", col = "green", ylim = c(0.25,0.6), lwd = 2, xlab = "Year", ylab = "Estimate", main = "Adult survival")
+# lines(ipm.model$q2.5$mphi, lty = "dashed", lwd = 1.5, col = "green")
+# lines(ipm.model$q97.5$mphi, lty = "dashed", lwd = 1.5, col = "green")
 # abline(v = ny, lty = "dashed")
 # 
 # #First-year productivity
@@ -778,7 +773,7 @@ out<-as.data.frame(ipm.model$summary)
 out$parameter<-row.names(ipm.model$summary)
 names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
-write.table(out, "output/AQWA_GER_model_nscenarios_output_fixed.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output_fixed_constantsurv.csv", sep=",")
 
 
 
