@@ -32,7 +32,7 @@
 # Apparent survival for males (ϕ=0.26±0.06, CI 0.18−0.41) was higher than that for females (ϕ=0.18±0.07, CI 0.08–0.36) from https://www.tandfonline.com/doi/full/10.1080/00063657.2018.1448366#d1e445
 # Annual adult survival ranged from 0.69 ± 0.05 to 0.88 ± 0.03 from https://bioone.org/journals/ardea/volume-103/issue-2/arde.v103i2.a5/Climatic-Influences-on-Survival-of-Migratory-African-Reed-Warblers-Acrocephalus/10.5253/arde.v103i2.a5.full
 # survival rates were 60.3 ± 6.0 (se) for males and 54.9 ± 10.3 for females. Survival rates at Site B were 32.9 ± 16.0 for males and 52.0 ± 22.4 for females from https://www.tandfonline.com/doi/abs/10.1080/03078698.2006.9674347
-# 
+# changed on 10 Feb 2025 to specify juvenile survival as proportion of adult survival
 
 
 #The projection scenarios are the following:
@@ -206,6 +206,9 @@ hist(db)
 phi <- rnorm(1e6, 0.54, 0.2)
 hist(phi)
 
+hist(rbeta(1e6, 50, 5)) ## proportion of adult survival that we could use for juvenile survival
+
+
 
 ##############################################################################
 #
@@ -235,7 +238,8 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
 mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds
-mphi[1] ~ dbeta(1.2,1.2)		### survival of first year birds
+prop.phij  ~ dbeta(50,5)  ### proportion of adult survival that is juvenile survival to avoid it being greater than adult survival
+mphi[1] <-	mphi[2]*prop.phij	### survival of first year birds
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
           phi[i,t] <- mphi[age[i,t]]
@@ -477,13 +481,14 @@ sink()
 # Initial values
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
+  prop.phij = rbeta(1,50,5),
   mean.p = runif(2, 0.2,0.7),
-  mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),    ## using rbeta results in crazy output and model does not converge at all
+  #mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),    ## using rbeta results in crazy output and model does not converge at all
   mfec1 = runif(1, 2.8,3.8),
   mfec2 = runif(1, 1.9,3.0))}
 
 # Parameters monitored
-parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males", "db", "Nfemdb",
+parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males","prop.phij", "db", "Nfemdb",
                 "proj.lambda","mean.p")
 
 
@@ -510,6 +515,7 @@ out$parameter<-row.names(ipm.model$summary)
 names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
 out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
+out %>% filter(!startsWith(parm,"Ntot")) %>% filter(!startsWith(parm,"db")) %>%select(parm, median, lcl, ucl, Rhat, n.eff)
 write.table(out, "output/AQWA_GER_model_nscenarios_output.v7.csv", sep=",")
 
 
