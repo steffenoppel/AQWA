@@ -18,9 +18,10 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
-mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds
-prop.phij  ~ dbeta(50,5)  ### proportion of adult survival that is juvenile survival to avoid it being greater than adult survival
-mphi[1] <-	mphi[2]*prop.phij	### survival of first year birds
+phi.ad ~ dnorm(0.42,0.03)   ## adult survival for population projections
+mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds for estimation - NOT USED IN POPULATION PROCESS BECAUSE BASED ON TOO FEW DATA
+#prop.phij  ~ dbeta(50,5)  ### proportion of adult survival that is juvenile survival to avoid it being greater than adult survival
+mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
           phi[i,t] <- mphi[age[i,t]]
@@ -97,7 +98,7 @@ for (t in 1:(ncountyears-1)){
       	chicks[1,t-1] <- (Ntot[1,t-1])*(1-prop.males)* fec1[t-1] # total fecundity
       	chicksrd[1,t-1] <- round(chicks[1,t-1])
 		N1[1,t] ~ dbin(phij[t-1],chicksrd[1,t-1]) 
-		NadSurv[1,t] ~ dbin(phia[t-1],round((Ntot[1,t-1])))
+		NadSurv[1,t] ~ dbin(phi.ad,round((Ntot[1,t-1])))
 	}
 
    # 4.2 Observation process
@@ -238,7 +239,7 @@ for(ns in 4:nscenarios){
       	    chicks[ns,t-1] <- Nfem.breed1[ns,t-ncountyears] * fec1[t] + Nfem.breed2[ns,t-ncountyears]*fec2[t-ncountyears]			# total fecundity
       	    chicksrd[ns,t-1] <- round(chicks[ns,t-1]) + releases[ns,t-ncountyears]
 		        N1[ns,t] ~ dbin(min(1,phij[t-1]*impsurv[ns]),chicksrd[ns,t-1]) 
-		        NadSurv[ns,t] ~ dbin(min(1,phia[t-1]*impsurv[ns]),round((Ntot[ns,t-1])))
+		        NadSurv[ns,t] ~ dbin(min(1,phi.ad*impsurv[ns]),round((Ntot[ns,t-1])))
 		   	    Ntot[ns,t] <- NadSurv[ns,t] + N1[ns,t]								## total population	
   	} #Time loop
   	
