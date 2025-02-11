@@ -1,0 +1,35 @@
+
+    model{
+    
+    #Priors and lineal models
+    phi.mean ~ dbeta(1.2,1.2)
+    p.mean ~ dbeta(1.2,1.2)
+    
+    for (t in 1:(nyears-1)){
+      phi[t] <- phi.mean
+      p[t] <- p.mean
+  }
+  # Likelihood
+  # Define the multinomial likelihood
+  for (t in 1:(nyears-1)){
+    marr[t,1:nyears] ~ dmulti(pi[t,], rel[t])
+  }
+  # Define the cell probabilities of the m-array
+  for (t in 1:(nyears-1)){
+  # Main diagonal
+  q[t] <- 1 - p[t] # Probability of non-recapture
+  pi[t,t] <- phi[t] * p[t]
+  # Above main diagonal
+  for (j in (t+1):(nyears-1)){
+    pi[t,j] <- prod(phi[t:j]) * prod(q[t:(j-1)]) * p[j]
+  } #j
+  # Below main diagonal
+  for (j in 1:(t-1)){
+    pi[t,j] <- 0
+    } #j
+  } #t
+  # Last column: probability of non-recapture
+  for (t in 1:(nyears-1)){
+    pi[t,nyears] <- 1-sum(pi[t,1:(nyears-1)])
+  }
+}
