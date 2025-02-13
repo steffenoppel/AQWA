@@ -36,6 +36,11 @@
 # survival rates were 60.3 ± 6.0 (se) for males and 54.9 ± 10.3 for females. Survival rates at Site B were 32.9 ± 16.0 for males and 52.0 ± 22.4 for females from https://www.tandfonline.com/doi/abs/10.1080/03078698.2006.9674347
 # changed on 10 Feb 2025 to specify juvenile survival as proportion of adult survival
 
+## priors from AQWA studies in Poland
+# survival rates were 0.42 for females (0.290-0.563).(Dyrcz from AQWA Conservation handbook)
+# survival rates were 0.36±0.04 (standard error) for M and F in SE Poland (Dyrcz from AQWA Conservation handbook)
+# and the detection probability was 0.57±0.09 for males and 0.26±0.10
+
 
 #The projection scenarios are the following:
 # RUN EACH SCENARIO WITH AND WITHOUT IMPROVED SURVIVAL
@@ -179,34 +184,52 @@ jags.data <- list(ncountyears = length(years-1),
 jags.data$y[22] <- 3
 
 
-# Let's define new priors. Perhaps I should make them slightly wider. We have to discuss this. The important thing is, they resemble the prior knowledge.
+### TESTING REASONABLE DISTRIBUTION FOR INFORMATIVE PRIORS ###
 
-mean(runif(1e6, 0.28, 0.56)) #Mean is 0.42
-pa <- rnorm(1e6, 0.42, 0.03)
+## adult female survival (for projection)
+# 0.42 for females (0.290-0.563).(Dyrcz from AQWA Conservation handbook, p. 67)
+# survival rates were 0.36±0.04 .(Foucher from AQWA Conservation handbook, p.68)
+pa <- runif(1e6, 0.29, 0.56) #Mean is 0.42
+pa <- rnorm(1e6, 0.385, 0.04)  ## standard error based on n=79 individuas that were resighted
+#pa <- rbeta(1e6, 38, 65) ## attempt to use beta distribution
 hist(pa)
 quantile(pa)
 
+## detection probability differs by sex
+# detection probability was 0.57±0.09 for males and 0.26±0.10 for females.
+pm <- rnorm(1e6, 0.57, 0.04)  ## males
+hist(pm)
+quantile(pm)
+
+pf <- rnorm(1e6, 0.26, 0.04)  ## males
+hist(pf)
+quantile(pf)
+
+## juvenile survival
 mean(runif(1e6, 0.2, 0.44)) #Mean is 0.32
 pj <- rnorm(1e6, 0.32, 0.025)
 quantile(pj) #Nice
 
+## productivity first clutch
 mean(runif(1e6, 2.3, 4)) #Mean is 3.2
 f1 <- rnorm(1e6, 3.15, .16)
 quantile(f1)
 
+## productivity second clutch
 mean(runif(1e6, 1.8, 3.7)) #Mean is 2.75
 f2 <- rnorm(1e6, 2.75, .2)
 quantile(f2)
 
+## sex ratio (proportion males)
 pm <- rnorm(1e6, 0.56, 0.01)
 hist(pm)
 
+## probortion of double brooding females
 db <- rnorm(1e6, 0.25, 0.07)
 quantile(db)
 hist(db)
 
-phi <- rnorm(1e6, 0.54, 0.2)
-hist(phi)
+
 
 hist(rbeta(1e6, 50, 5)) ## proportion of adult survival that we could use for juvenile survival
 
@@ -218,7 +241,7 @@ hist(rbeta(1e6, 50, 5)) ## proportion of adult survival that we could use for ju
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v8.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v9.jags")
 cat("
 model {
 
@@ -239,9 +262,8 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
-phi.ad ~ dnorm(0.42,0.03)   ## adult survival for population projections
+phi.ad ~ dnorm(0.385,0.04)T(0.29,)   ## adult femae survival for population projections based on info from Poland
 mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds for estimation - NOT USED IN POPULATION PROCESS BECAUSE BASED ON TOO FEW DATA
-#prop.phij  ~ dbeta(50,5)  ### proportion of adult survival that is juvenile survival to avoid it being greater than adult survival
 mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
@@ -251,50 +273,27 @@ mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
         p[i,n.markocc] <- mean.p[sex[i]]
       } #i
       
-      for(sx in 1:2) {
-        mean.p[sx] ~ dunif(0.05, 0.75)                  # resighting probability differs between sexes
-      }
+# PRIORS FOR RESIGHTING PROBABILITY BASED ON SE POLAND
+mean.p[1] ~ dnorm(0.57, 0.04)                  # resighting probability for males
+mean.p[2] ~ dnorm(0.26, 0.04)T(0,)            # resighting probability for females
+
 
 
 #--------------------------------------------------
 # 2. Random variation in annual survival and productivity
 #--------------------------------------------------
-# CHANGE THE SCALE OF DEMOGRAPHIC PARAMETERS TO FACILITATE INCORPORATION OF COVARIATES
-# l.mphij<-log(mphi[1]/(1-mphi[1]))	    # juvenile survival probability on logit scale;
-# l.mphia<-log(mphi[2]/(1-mphi[2]))			# adult survival probability on logit scale
-# log.mfec1 <- log(mfec1)            #first-brood productivity on log scale
-# log.mfec2 <- log(mfec2)           #second-brood productivity on log scale
-
-# RANDOM ANNUAL EFFECTS ON SURVIVAL AND PRODUCTIVITY
-
-# tau.surv<-1/pow(sigma.surv,2)
-# sigma.surv~dunif(0,5)
-# 
-# tau.prod <- pow(sigma.prod, -2)
-# sigma.prod ~ dunif(0,2)
-
-# tau.ann <- pow(sigma.ann, -2)
-# sigma.ann ~ dunif(0,2)
 
 for (t in 1:(ncountyears+nprojyears)){
-   # eps.surv[t] ~ dnorm(0, tau.surv)						# random variation around annual survival
-   # eps.fec[t] ~ dnorm(0, tau.prod)            # random variation around productivity
-   #eps.ann[t] ~ dnorm(0, tau.ann)            # random variation around productivity
-   # logit(phij[t]) <- l.mphij+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
-   # logit(phia[t]) <- l.mphia+ eps.ann[t]			# add random effect - could add environmental predictors here (if we had any)
+
    phij[t] <- mphi[1]			# fixed effect for every occasion - no temporal variability
    phia[t] <- mphi[2]			# fixed effect for every occasion - no temporal variability
-   #log(fec1[t]) <- log.mfec1 + eps.ann[t]     # add random effect
    fec1[t] <-mfec1
 }
 
 #Fec 2, the fecundity of second broods, is only applied to future scenarios now
 
 for(t in 1:nprojyears){
-
-  #log(fec2[t]) <- log.mfec2 + eps.ann[t+ncountyears] #To use the same eps for both
   fec2[t]<-mfec2
-  
 }
 
 #-----------------------
@@ -485,15 +484,15 @@ sink()
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
   prop.phij = rbeta(1,50,5),
-  phi.ad = rnorm(1,0.42,0.03),
-  mean.p = runif(2, 0.2,0.7),
+  phi.ad = rnorm(1,0.38,0.02),
+  mean.p = c(runif(1, 0.4,0.6),runif(1, 0.2,0.3)),
   mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),    ## using rbeta results in crazy output and model does not converge at all
   mfec1 = runif(1, 2.8,3.8),
   mfec2 = runif(1, 1.9,3.0))}
 
 # Parameters monitored
-parameters <- c("Ntot","mphi","mfec1","mfec2","mean.lambda","prop.males","phi.ad", "db", "Nfemdb",
-                "proj.lambda","mean.p")
+parameters <- c("phi.ad", "mean.p","mphi","mfec1","mfec2","mean.lambda","prop.males","db", "Nfemdb",
+                "proj.lambda","Ntot")
 
 
 # MCMC settings
@@ -507,7 +506,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v8.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v9.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
@@ -520,7 +519,7 @@ names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
 out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
 out %>% filter(!startsWith(parm,"Ntot")) %>% filter(!startsWith(parm,"db")) %>%select(parm, median, lcl, ucl, Rhat, n.eff)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v8.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v9.csv", sep=",")
 
 
 
