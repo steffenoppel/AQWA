@@ -70,6 +70,7 @@
 #18) No mowing + habitat constrained 2400ha + 15 release years
 
 #19) No mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario)
+#20) Mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario with improved survival)
 
 
 rm(list=ls())
@@ -123,7 +124,7 @@ age.mat[,2]<-ifelse(age.mat[,1]==1,2,1)
 age.mat[,3:5]<-2
 
 #Number of future scenarios modelled 
-nscenarios <- 19
+nscenarios <- 20
 
 #Number of years for the projections into the future
 nprojyears <- 25
@@ -133,7 +134,7 @@ releases <- matrix(nrow = nscenarios, ncol = nprojyears, data = 50)
 releases[c(1,4,7,10,13,16), 6:25] <- 0
 releases[c(2,5,8,11,14,17), 11:25] <- 0
 releases[c(3,6,9,12,15,18), 16:25] <- 0
-releases[19, ] <- 0
+releases[c(19,20), ] <- 0
 releases <- rbind(releases,releases)  ## double to include with and without survival improvement
 
 #A variable to model density-dependence in the number of breeding males that can reproduce.
@@ -149,7 +150,7 @@ releases <- rbind(releases,releases)  ## double to include with and without surv
 # maxrepm[10:12] <- 360
 
 maxrepf <- numeric(length = nscenarios)
-maxrepf[c(1:6,19)] <- 10000 #Dummy limit
+maxrepf[c(1:6,19,20)] <- 10000 #Dummy limit
 maxrepf[c(7:9)] <- 24
 maxrepf[10:12] <- 48
 maxrepf[13:15] <- 144
@@ -241,7 +242,7 @@ hist(rbeta(1e6, 50, 5)) ## proportion of adult survival that we could use for ju
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v9.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v10.jags")
 cat("
 model {
 
@@ -363,9 +364,14 @@ for (t in 1:(ncountyears-1)){
     NadSurv[19,t] <- NadSurv[1,1]
     chicks[19,(t-1)] <- chicks[1,1]
     chicksrd[19,(t-1)] <- chicksrd[1,1]
+    Ntot[20,t] <- Ntot[1,1]
+    N1[20,t] <- N1[1,1]
+    NadSurv[20,t] <- NadSurv[1,1]
+    chicks[20,(t-1)] <- chicks[1,1]
+    chicksrd[20,(t-1)] <- chicksrd[1,1]
   }
   
-  for(ns in 20:(nscenarios-1)){
+  for(ns in 21:(nscenarios-2)){
   
     Ntot[ns,1:ncountyears] <- Ntot[1,1:ncountyears]
     N1[ns,1:ncountyears] <- N1[1,1:ncountyears]
@@ -376,11 +382,16 @@ for (t in 1:(ncountyears-1)){
   }
   
   for(t in 2:ncountyears){
-    Ntot[38,t] <- Ntot[1,1]
+    Ntot[39,t] <- Ntot[1,1]
     N1[39,t] <- N1[1,1]
-    NadSurv[38,t] <- NadSurv[1,1]
-    chicks[38,(t-1)] <- chicks[1,1]
-    chicksrd[38,(t-1)] <- chicksrd[1,1]
+    NadSurv[39,t] <- NadSurv[1,1]
+    chicks[39,(t-1)] <- chicks[1,1]
+    chicksrd[39,(t-1)] <- chicksrd[1,1]
+    Ntot[40,t] <- Ntot[1,1]
+    N1[40,t] <- N1[1,1]
+    NadSurv[40,t] <- NadSurv[1,1]
+    chicks[40,(t-1)] <- chicks[1,1]
+    chicksrd[40,(t-1)] <- chicksrd[1,1]
   }
       
 # -------------------------------------------------        
@@ -414,6 +425,7 @@ for (t in 1:(ncountyears-1)){
 #18) No mowing + habitat constrained 2400ha + 15 release years
 
 #19) No mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario)
+#20) Mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario)
 
 
 #Hence, there should be variables storing all modifications in parameters involved in these simulations. These are:
@@ -422,8 +434,8 @@ for (t in 1:(ncountyears-1)){
 
 #This should do it for the proportion of double broods
 
-#Scenarios 1 - 3, no double broods
-for(ns in 1:3){
+#Scenarios 1 - 3 and 20, no double broods
+for(ns in c(1:3,20:23,40)){
   for(t in 1:nprojyears){
   
   db[ns,t] <- 0
@@ -433,7 +445,7 @@ for(ns in 1:3){
 
 #The rest, double broods
 
-for(ns in 4:nscenarios){
+for(ns in c(4:19,24:39)){
   for(t in 1:nprojyears){
   
   db[ns,t] ~ dnorm(0.25,1/(0.07^2))T(0,1)
@@ -506,7 +518,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v9.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v10.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
@@ -519,7 +531,7 @@ names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
 out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
 out %>% filter(!startsWith(parm,"Ntot")) %>% filter(!startsWith(parm,"db")) %>%select(parm, median, lcl, ucl, Rhat, n.eff)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v9.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v10.csv", sep=",")
 
 
 
@@ -549,7 +561,8 @@ ntotdf <- data.frame(Ntot = numeric(length = length(ipm.model$mean$Ntot)),
                                   rep("No mowing + 5y Habitat Constrained 2400 ha", 47),
                                   rep("No mowing + 10y Habitat Constrained 2400 ha", 47),
                                   rep("No mowing + 15y Habitat Constrained 2400 ha", 47),
-                                  rep("Past trajectory without mowing", 47)),
+                                  rep("Past trajectory without mowing", 47),
+                                  rep("Past trajectory with mowing", 47)),
                      survival=rep(c("no survival improvement","5% survival improvement"), each=nscenarios*47),
                      year = rep(1:47, nscenarios*2))
 
@@ -563,7 +576,7 @@ ntotdf$Scenario <- factor(ntotdf$Scenario, levels = c("Mowing + 5y Habitat Uncon
                                                       "No mowing + 5y Habitat Constrained 400 ha", "No mowing + 10y Habitat Constrained 400 ha","No mowing + 15y Habitat Constrained 400 ha",
                                                       "No mowing + 5y Habitat Constrained 1200 ha", "No mowing + 10y Habitat Constrained 1200 ha","No mowing + 15y Habitat Constrained 1200 ha",
                                                       "No mowing + 5y Habitat Constrained 2400 ha", "No mowing + 10y Habitat Constrained 2400 ha","No mowing + 15y Habitat Constrained 2400 ha",
-                                                      "Past trajectory without mowing"))
+                                                      "Past trajectory without mowing", "Past trajectory with mowing"))
 
 #ntotdf$year <- factor(ntotdf$year)
 
@@ -571,14 +584,14 @@ ntotdf$Scenario <- factor(ntotdf$Scenario, levels = c("Mowing + 5y Habitat Uncon
 
 poptrendspast <- 
   ntotdf %>%
-  filter(Scenario=="Past trajectory without mowing") %>%
+  filter(Scenario %in% c("Past trajectory without mowing", "Past trajectory with mowing")) %>%
   filter(year>21) %>%
   mutate(year=year-21) %>%
-  bind_rows(ntotdf %>%
-              filter(Scenario=="Mowing + 5y Habitat Unconstrained") %>%
-              filter(year<22) %>%
-              mutate(Scenario="Observed past")
-  ) %>%
+  # bind_rows(ntotdf %>%
+  #             filter(Scenario=="Mowing + 5y Habitat Unconstrained") %>%
+  #             filter(year<22) %>%
+  #             mutate(Scenario="Observed past")
+  # ) %>%
   
   ggplot(aes(x = year+2002, y = Ntot, col = Scenario, group = Scenario)) +
   geom_line(linewidth = 1.1) +
@@ -596,7 +609,7 @@ ggsave("output/Past_population_trajectories.jpg", width=241,height=191, quality=
 
 poptrends <- 
   ntotdf %>%
-  filter(Scenario!="Past trajectory without mowing") %>%
+  filter(!(Scenario %in% c("Past trajectory without mowing", "Past trajectory with mowing"))) %>%
 
   ggplot(aes(x = year+2002, y = Ntot, col = Scenario, linetype=survival, group = survival)) +
   geom_line(linewidth = 1.1) +
@@ -644,7 +657,7 @@ names(fut.ext)<- rep(c("Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habita
                    "No mowing + 5y Habitat Constrained 400 ha", "No mowing + 10y Habitat Constrained 400 ha","No mowing + 15y Habitat Constrained 400 ha",
                    "No mowing + 5y Habitat Constrained 1200 ha", "No mowing + 10y Habitat Constrained 1200 ha","No mowing + 15y Habitat Constrained 1200 ha",
                    "No mowing + 5y Habitat Constrained 2400 ha", "No mowing + 10y Habitat Constrained 2400 ha","No mowing + 15y Habitat Constrained 2400 ha",
-                   "Past trajectory without mowing"), 2)
+                   "Past trajectory without mowing","Past trajectory with mowing"), 2)
 
 
 fut.ext %>%
@@ -652,7 +665,7 @@ fut.ext %>%
   #gather(key="Scenario",value="N") %>%
   mutate(survival=rep(rep(c("no survival improvement","5% survival improvement"), each=(nscenarios)),40000)) %>%
   filter(!(str_detect(pattern="15y", string=Scenario))) %>%
-  filter(Scenario!="Past trajectory without mowing") %>%
+  filter(!(Scenario %in% c("Past trajectory without mowing", "Past trajectory with mowing"))) %>%
   group_by(Scenario,survival) %>%
   summarize(ext.prob=w0(N)) %>%
   
@@ -705,8 +718,8 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
   dplyr::select(tidyselect::starts_with("proj.lambda")) %>%
   rename(nochange=`proj.lambda[1]`,
          no.mowing.unlim.hab=`proj.lambda[4]`,
-         no.mowing.lim.hab.200=`proj.lambda[26]`,
-         no.mowing.lim.hab.1200=`proj.lambda[32]`) %>%
+         no.mowing.lim.hab.200=`proj.lambda[27]`,
+         no.mowing.lim.hab.1200=`proj.lambda[33]`) %>%
   dplyr::select(-tidyselect::starts_with("proj.lambda")) %>%
   gather(key="Scenario",value="lambda") %>%
   filter(lambda>0.5) %>% ## remove bizarre growth rates caused by extinct populations?
