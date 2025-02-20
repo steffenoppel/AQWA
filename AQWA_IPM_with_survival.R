@@ -242,7 +242,7 @@ hist(rbeta(1e6, 50, 5)) ## proportion of adult survival that we could use for ju
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v10.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v11.jags")
 cat("
 model {
 
@@ -263,7 +263,8 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
-phi.ad ~ dnorm(0.385,0.04)T(0.29,)   ## adult femae survival for population projections based on info from Poland
+phi.ad ~ dnorm(0.385,1/(0.04^2))
+#phi.ad ~ dnorm(0.385,0.04)T(0.29,)   ## adult femae survival for population projections based on info from Poland
 mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds for estimation - NOT USED IN POPULATION PROCESS BECAUSE BASED ON TOO FEW DATA
 mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
       for (i in 1:n.marked){
@@ -518,7 +519,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v10.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v11.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
@@ -531,7 +532,7 @@ names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
 out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
 out %>% filter(!startsWith(parm,"Ntot")) %>% filter(!startsWith(parm,"db")) %>%select(parm, median, lcl, ucl, Rhat, n.eff)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v10.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v11.csv", sep=",")
 
 
 
