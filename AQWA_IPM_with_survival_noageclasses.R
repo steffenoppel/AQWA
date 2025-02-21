@@ -599,7 +599,7 @@ poptrendspast <-
   theme(legend.position = "none") +
   xlab("Year") + ylab("Aquatic Warbler population size")
 poptrendspast
-ggsave("output/Past_population_trajectories.jpg", width=241,height=191, quality=100, units="mm")
+ggsave("output/Past_population_trajectories_survconstant.jpg", width=241,height=191, quality=100, units="mm")
 
 
 
@@ -690,7 +690,7 @@ fut.ext %>%
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Extinction_probability.jpg", width=351,height=191, quality=100, units="mm")
+ggsave("output/Extinction_probability_survconstant.jpg", width=351,height=191, quality=100, units="mm")
 
 
 
@@ -749,7 +749,7 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Future_pop_growth_rates.jpg", width=235,height=181, quality=100, units="mm")
+ggsave("output/Future_pop_growth_rates_survconstant.jpg", width=235,height=181, quality=100, units="mm")
 
 
 
