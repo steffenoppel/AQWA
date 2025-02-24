@@ -112,7 +112,16 @@ AW_CH<-read_excel("data/AW_raw_data.xlsx", sheet="returns") %>%
   mutate(sex=ifelse(is.na(sex),1,2)) %>%
   mutate(`2018`=ifelse(`release year`==2018,1,0)) %>%
   mutate(`2019`=ifelse(`release year`==2019,1,`2019`)) %>%
-  select(ID, sex,`2018`,`2019`,`2020`,`2021`,`2022`)
+  select(ID, sex,`2018`,`2019`,`2020`,`2021`,`2022`,`release year`)
+
+## check raw sum of birds that return
+AW_CH %>% rowwise() %>%
+  #filter(`release year`==2019) %>%
+  mutate(ret=ifelse(`2018`==1,
+                            max(`2019`,`2020`,`2021`,`2022`),max(`2020`,`2021`,`2022`))) %>%
+  group_by(sex) %>%
+  summarise(mean(ret))
+  
 
 # Create vector with occasion of marking
 get.first <- function(x) min(which(x!=0))
