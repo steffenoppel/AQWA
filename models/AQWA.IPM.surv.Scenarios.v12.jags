@@ -19,25 +19,19 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
 phi.ad ~ dnorm(0.385,1/(0.04^2))  ## adult femae survival for population projections based on info from Poland
-
-#Juvenile survival by sex and age
-
-mphi[1,1] ~	dbeta(1.2,1.2)	### survival of first year birds - males (not considered)
-mphi[1,2] ~ dbeta(1.2,1.2)	### survival of first year birds - females (used as juvenile survival)
-mphi[2,1] ~ dbeta(1.2,1.2)  #survival of adults by sex - not considered, we're using a prior
-mphi[2,2] ~ dbeta(1.2,1.2)
-
+mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds for estimation - NOT USED IN POPULATION PROCESS BECAUSE BASED ON TOO FEW DATA
+mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
       for (i in 1:n.marked){
         for (t in f[i]:(n.markocc-1)){
-          phi[i,t] <- mphi[age[i,t], sex[i]]
+          phi[i,t] <- mphi[age[i,t]]
           p[i,t] <- mean.p[sex[i]]
         } #t
         p[i,n.markocc] <- mean.p[sex[i]]
       } #i
       
 # PRIORS FOR RESIGHTING PROBABILITY BASED ON SE POLAND
-mean.p[1] ~ dnorm(0.57, 0.04)                  # resighting probability for males
-mean.p[2] ~ dnorm(0.26, 0.04)T(0,)            # resighting probability for females
+mean.p[1] ~ dnorm(0.57, 1/(0.04^2))                  # resighting probability for males
+mean.p[2] ~ dnorm(0.26, 1/(0.04^2))T(0,)            # resighting probability for females
 
 
 
@@ -47,8 +41,8 @@ mean.p[2] ~ dnorm(0.26, 0.04)T(0,)            # resighting probability for femal
 
 for (t in 1:(ncountyears+nprojyears)){
 
-   phij[t] <- mphi[1,2]			# fixed effect for every occasion - no temporal variability
-   phia[t] <- phi.ad			# fixed effect for every occasion - no temporal variability
+   phij[t] <- mphi[1]			# fixed effect for every occasion - no temporal variability
+   phia[t] <- mphi[2]			# fixed effect for every occasion - no temporal variability
    fec1[t] <-mfec1
 }
 
@@ -239,12 +233,12 @@ for(ns in c(4:19,24:39)){
   	
   	## FINAL POPULATION GROWTH RATE (steady state after reintroduction ends)
   	# Population growth rate
-    for (t in (ncountyears+10):(ncountyears+nprojyears-1)){
+    for (t in (ncountyears+15):(ncountyears+nprojyears-1)){
       lambda.f[ns,t] <- Ntot[ns,t+1] / max(1,Ntot[ns,t]) # prevent invalid parent error when Ntot=0
       loglambda.f[ns,t]<-log(lambda.f[ns,t])## for calculating geometric mean of overall population growth rate
     }
     #### OVERALL POPULATION GROWTH RATE  #########
-    proj.lambda[ns]<-exp((1/10)*sum(loglambda.f[ns,(ncountyears+10):(ncountyears+nprojyears-1)]))   # Geometric mean
+    proj.lambda[ns]<-exp((1/10)*sum(loglambda.f[ns,(ncountyears+15):(ncountyears+nprojyears-1)]))   # Geometric mean
   	
   } #Nscenarios loop
 }

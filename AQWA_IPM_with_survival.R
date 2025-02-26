@@ -251,7 +251,7 @@ hist(rbeta(1e6, 50, 5)) ## proportion of adult survival that we could use for ju
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v11.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v12.jags")
 cat("
 model {
 
@@ -272,8 +272,7 @@ prop.males ~ dnorm(0.56, 1/(0.01^2))T(0,1)  ### proportion of population that is
 
 # SURVIVAL PRIORS FOR AGE AND SEX GROUPS
 
-phi.ad ~ dnorm(0.385,1/(0.04^2))
-#phi.ad ~ dnorm(0.385,0.04)T(0.29,)   ## adult femae survival for population projections based on info from Poland
+phi.ad ~ dnorm(0.385,1/(0.04^2))  ## adult femae survival for population projections based on info from Poland
 mphi[2] ~ dbeta(1.2,1.2)			### survival of adult birds for estimation - NOT USED IN POPULATION PROCESS BECAUSE BASED ON TOO FEW DATA
 mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
       for (i in 1:n.marked){
@@ -285,8 +284,8 @@ mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
       } #i
       
 # PRIORS FOR RESIGHTING PROBABILITY BASED ON SE POLAND
-mean.p[1] ~ dnorm(0.57, 0.04)                  # resighting probability for males
-mean.p[2] ~ dnorm(0.26, 0.04)T(0,)            # resighting probability for females
+mean.p[1] ~ dnorm(0.57, 1/(0.04^2))                  # resighting probability for males
+mean.p[2] ~ dnorm(0.26, 1/(0.04^2))T(0,)            # resighting probability for females
 
 
 
@@ -488,12 +487,12 @@ for(ns in c(4:19,24:39)){
   	
   	## FINAL POPULATION GROWTH RATE (steady state after reintroduction ends)
   	# Population growth rate
-    for (t in (ncountyears+10):(ncountyears+nprojyears-1)){
+    for (t in (ncountyears+15):(ncountyears+nprojyears-1)){
       lambda.f[ns,t] <- Ntot[ns,t+1] / max(1,Ntot[ns,t]) # prevent invalid parent error when Ntot=0
       loglambda.f[ns,t]<-log(lambda.f[ns,t])## for calculating geometric mean of overall population growth rate
     }
     #### OVERALL POPULATION GROWTH RATE  #########
-    proj.lambda[ns]<-exp((1/10)*sum(loglambda.f[ns,(ncountyears+10):(ncountyears+nprojyears-1)]))   # Geometric mean
+    proj.lambda[ns]<-exp((1/10)*sum(loglambda.f[ns,(ncountyears+15):(ncountyears+nprojyears-1)]))   # Geometric mean
   	
   } #Nscenarios loop
 }
@@ -528,7 +527,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v11.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v12.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
@@ -541,7 +540,7 @@ names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
 out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
 out %>% filter(!startsWith(parm,"Ntot")) %>% filter(!startsWith(parm,"db")) %>%select(parm, median, lcl, ucl, Rhat, n.eff)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v11.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v12.csv", sep=",")
 
 
 
@@ -616,21 +615,23 @@ ggsave("output/Past_population_trajectories.jpg", width=241,height=191, quality=
 
 
 #The plot for the future
+## gradient shaded ribbon is too much effort: https://stackoverflow.com/questions/4913117/gradient-in-geom-ribbon
 
 poptrends <- 
   ntotdf %>%
   filter(!(Scenario %in% c("Past trajectory without mowing", "Past trajectory with mowing"))) %>%
 
-  ggplot(aes(x = year+2002, y = Ntot, col = Scenario, linetype=survival, group = survival)) +
+  ggplot(aes(x = year+2002, y = Ntot, col = survival, linetype=survival, group = survival)) +
   geom_line(linewidth = 1.1) +
   geom_vline(aes(xintercept = 2025), linetype = 2) +
-  geom_ribbon(aes(ymin = cim, ymax = cip,linetype=survival), fill = NA) +
+  #geom_ribbon(aes(ymin = cim, ymax = cip,linetype=survival), fill = NA) +
+  geom_ribbon(aes(ymin = cim, ymax = cip,fill=survival), colour=NA, alpha=0.5) +
   facet_wrap(~Scenario, ncol = 3, scales="free_y")  +
   theme_bw() +
   theme(legend.position = "none") +
   xlab("Year") + ylab("Aquatic Warbler population size")
 poptrends
-#ggsave("output/Scenario_projections.jpg", width=241,height=191, quality=100, units="mm")
+#ggsave("output/Scenario_projections_v12.jpg", width=241,height=191, quality=100, units="mm")
 
 
 # Extinction probability (could plot this as well)
@@ -697,7 +698,7 @@ fut.ext %>%
         legend.title = element_text(size=12),
         legend.position="bottom",
         legend.direction="horizontal",
-        panel.grid.major = element_line(size=.1, color="grey94"),
+        panel.grid.major = element_line(linewidth=.1, color="grey94"),
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))
 
@@ -727,25 +728,27 @@ ggsave("output/Extinction_probability.jpg", width=351,height=191, quality=100, u
 as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[[3]],ipm.model$samples[[4]])) %>%
   dplyr::select(tidyselect::starts_with("proj.lambda")) %>%
   rename(nochange=`proj.lambda[1]`,
-         no.mowing.unlim.hab=`proj.lambda[4]`,
-         no.mowing.lim.hab.200=`proj.lambda[27]`,
-         no.mowing.lim.hab.1200=`proj.lambda[33]`) %>%
+         no.mowing.curr.surv=`proj.lambda[4]`,
+         mowing.imp.surv=`proj.lambda[21]`,
+         # no.mowing.lim.hab.200=`proj.lambda[27]`,
+         # no.mowing.lim.hab.1200=`proj.lambda[33]`,
+         no.mowing.imp.surv=`proj.lambda[24]`,) %>%
   dplyr::select(-tidyselect::starts_with("proj.lambda")) %>%
   gather(key="Scenario",value="lambda") %>%
   filter(lambda>0.5) %>% ## remove bizarre growth rates caused by extinct populations?
-  mutate(Scenario=if_else(Scenario=="no.mowing.lim.hab.200", "improved survival, no mowing, 200 ha habitat",
-                          if_else(Scenario=="nochange", "current mowing pressure and survival",
-                          if_else(Scenario=="no.mowing.unlim.hab","current survival and no mowing","improved survival, no mowing, 1200 ha habitat")))) %>%
+  mutate(Scenario=if_else(Scenario=="mowing.imp.surv", "improved survival, no second broods",
+                          if_else(Scenario=="nochange", "current survival, no second broods",
+                          if_else(Scenario=="no.mowing.curr.surv","current survival and second broods","improved survival and second broods")))) %>%
   
   ### start the plot ###
   ggplot(aes(x = lambda, fill = Scenario)) +                       # Draw overlaying histogram
   geom_histogram(position = "identity", alpha = 0.2, bins = 80, aes(y = after_stat(density)), color="black") +
   geom_density(alpha=0.5) +
   #geom_vline(aes(xintercept = 1), colour="indianred3", size=1) +
-  geom_segment(aes(x = 1, y = 0, xend = 1, yend = 10), colour="gray15", linetype = "dashed", linewidth=1)+
+  geom_segment(aes(x = 1, y = 0, xend = 1, yend = 12), colour="firebrick", linetype = "dashed", linewidth=1)+
   
   labs(x="Future population growth rate", y="Probability density",
-       fill="Scenario") +
+       fill="Scenario (with unlimited habitat)") +
   scale_fill_viridis_d(alpha=0.3,begin=0,end=0.98,direction=1) +
   scale_color_viridis_d(alpha=1,begin=0,end=0.98,direction=1) +
   
@@ -755,7 +758,7 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
         legend.text=element_text(size=12),
         legend.title = element_text(size=14),
         legend.position="inside",
-        legend.position.inside=c(0.14,0.88),
+        legend.position.inside=c(0.16,0.86),
         panel.grid.major = element_line(size=.1, color="grey94"),
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))
