@@ -73,6 +73,12 @@
 #20) Mowing (habitat unconstrained) no releases but starting population at N1 (retrospective hypothetical scenario with improved survival)
 
 
+
+### UPDATE 7 MARCH 2025: after discussion with Susanne add the following projections
+# scenarios with reduced survival by 5% (because 2018-2019 had lots of rain in Africa and our estimated survival may be too high)
+# calculate prob of reaching target population of 39-56 males (=100 total pop) at end of projection (instead of extinction probability)
+
+
 rm(list=ls())
 library(popbio)
 # library(doParallel)
@@ -144,7 +150,7 @@ releases[c(1,4,7,10,13,16), 6:25] <- 0
 releases[c(2,5,8,11,14,17), 11:25] <- 0
 releases[c(3,6,9,12,15,18), 16:25] <- 0
 releases[c(19,20), ] <- 0
-releases <- rbind(releases,releases)  ## double to include with and without survival improvement
+releases <- rbind(releases,releases,releases)  ## double to include with and without survival improvement
 
 #A variable to model density-dependence in the number of breeding males that can reproduce.
 # Remember, in the first scenarios, there is no density dependence.
@@ -164,12 +170,13 @@ maxrepf[c(7:9)] <- 24
 maxrepf[10:12] <- 48
 maxrepf[13:15] <- 144
 maxrepf[16:18] <- 288
-maxrepf <- c(maxrepf,maxrepf)  ## double to include with and without survival improvement
+maxrepf <- c(maxrepf,maxrepf,maxrepf)  ## double to include with and without survival improvement
 
-## IMPROVEMENT IN SURVIVAL
-impsurv <- numeric(length = nscenarios*2)
+## CHANGE IN SURVIVAL (HIGHER OR LOWER)
+impsurv <- numeric(length = nscenarios*3)
 impsurv[1:nscenarios] <- 1 # no change in survival for first 19 scenarios
 impsurv[(nscenarios+1):(nscenarios*2)] <- 1.05 # 5% improvement in survival for second 19 scenarios
+impsurv[(nscenarios*2+1):(nscenarios*3)] <- 0.95 # 5% reduction in survival for third 19 scenarios
 
 # Population counts (from years 2003 to 2024)
 y <- AW$Nmales		# ENTER DATA OR READ IN AS VECTOR
@@ -177,7 +184,7 @@ y <- AW$Nmales		# ENTER DATA OR READ IN AS VECTOR
 # compile data (because survival is only fraction of time series, and we cannot estimate temporal variability, we keep survival separate)
 jags.data <- list(ncountyears = length(years-1),
                   y = y[1:21],
-                  nscenarios = nscenarios*2,
+                  nscenarios = nscenarios*3,
                   nprojyears = nprojyears,
                   releases = releases,
                   maxrepf = maxrepf,
@@ -251,7 +258,7 @@ hist(rbeta(1e6, 50, 5)) ## proportion of adult survival that we could use for ju
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.surv.Scenarios.v12.jags")
+sink("models/AQWA.IPM.surv.Scenarios.v13.jags")
 cat("
 model {
 
@@ -353,9 +360,8 @@ for (t in 1:(ncountyears-1)){
   } #i
    
       
-  #To make calculations easy, let's replicate the calculations for the past into the 8 scenarios for all objects that are involved as well into the future projections
-  # ## TWO SCENARIOS SHOULD PROJECT HISTORIC TREND AND THUS NEED TO START AT HISTORIC POP SIZE
-  # COULD NOT WORK OUT HOW TO FIX THIS - cannot define node twice and also cannot leave gaps in matrix
+  # TWO SCENARIOS SHOULD PROJECT HISTORIC TREND AND THUS NEED TO START AT HISTORIC POP SIZE
+  # COULD NOT WORK OUT HOW TO LOOP THIS - cannot define node twice and also cannot leave gaps in matrix
   # cumbersome long manual specification
   
   for(ns in 2:18){
@@ -378,19 +384,7 @@ for (t in 1:(ncountyears-1)){
     NadSurv[20,t] <- NadSurv[1,1]
     chicks[20,(t-1)] <- chicks[1,1]
     chicksrd[20,(t-1)] <- chicksrd[1,1]
-  }
-  
-  for(ns in 21:(nscenarios-2)){
-  
-    Ntot[ns,1:ncountyears] <- Ntot[1,1:ncountyears]
-    N1[ns,1:ncountyears] <- N1[1,1:ncountyears]
-    NadSurv[ns,1:ncountyears] <- NadSurv[1,1:ncountyears]
-    chicks[ns,1:(ncountyears-1)] <- chicks[1,1:(ncountyears-1)]
-    chicksrd[ns,1:(ncountyears-1)] <- chicksrd[1,1:(ncountyears-1)]
-
-  }
-  
-  for(t in 2:ncountyears){
+    
     Ntot[39,t] <- Ntot[1,1]
     N1[39,t] <- N1[1,1]
     NadSurv[39,t] <- NadSurv[1,1]
@@ -401,6 +395,27 @@ for (t in 1:(ncountyears-1)){
     NadSurv[40,t] <- NadSurv[1,1]
     chicks[40,(t-1)] <- chicks[1,1]
     chicksrd[40,(t-1)] <- chicksrd[1,1]
+    
+    Ntot[59,t] <- Ntot[1,1]
+    N1[59,t] <- N1[1,1]
+    NadSurv[59,t] <- NadSurv[1,1]
+    chicks[59,(t-1)] <- chicks[1,1]
+    chicksrd[59,(t-1)] <- chicksrd[1,1]
+    Ntot[60,t] <- Ntot[1,1]
+    N1[60,t] <- N1[1,1]
+    NadSurv[60,t] <- NadSurv[1,1]
+    chicks[60,(t-1)] <- chicks[1,1]
+    chicksrd[60,(t-1)] <- chicksrd[1,1]
+  }
+  
+  for(ns in 21:(nscenarios-2)){
+  
+    Ntot[ns,1:ncountyears] <- Ntot[1,1:ncountyears]
+    N1[ns,1:ncountyears] <- N1[1,1:ncountyears]
+    NadSurv[ns,1:ncountyears] <- NadSurv[1,1:ncountyears]
+    chicks[ns,1:(ncountyears-1)] <- chicks[1,1:(ncountyears-1)]
+    chicksrd[ns,1:(ncountyears-1)] <- chicksrd[1,1:(ncountyears-1)]
+
   }
       
 # -------------------------------------------------        
@@ -444,7 +459,7 @@ for (t in 1:(ncountyears-1)){
 #This should do it for the proportion of double broods
 
 #Scenarios 1 - 3 and 20, no double broods
-for(ns in c(1:3,20:23,40)){
+for(ns in c(1:3,20:23,40:43,60)){
   for(t in 1:nprojyears){
   
   db[ns,t] <- 0
@@ -454,7 +469,7 @@ for(ns in c(1:3,20:23,40)){
 
 #The rest, double broods
 
-for(ns in c(4:19,24:39)){
+for(ns in c(4:19,24:39, 44:59)){
   for(t in 1:nprojyears){
   
   db[ns,t] ~ dnorm(0.25,1/(0.07^2))T(0,1)
@@ -527,7 +542,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.surv.Scenarios.v12.jags",
+                  "models/AQWA.IPM.surv.Scenarios.v13.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
