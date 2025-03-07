@@ -147,7 +147,7 @@ for (t in 1:(ncountyears-1)){
     chicksrd[60,(t-1)] <- chicksrd[1,1]
   }
   
-  for(ns in 21:(nscenarios-2)){
+  for(ns in c(21:38,41:(nscenarios-2))){
   
     Ntot[ns,1:ncountyears] <- Ntot[1,1:ncountyears]
     N1[ns,1:ncountyears] <- N1[1,1:ncountyears]

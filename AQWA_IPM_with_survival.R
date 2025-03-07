@@ -408,7 +408,7 @@ for (t in 1:(ncountyears-1)){
     chicksrd[60,(t-1)] <- chicksrd[1,1]
   }
   
-  for(ns in 21:(nscenarios-2)){
+  for(ns in c(21:38,41:(nscenarios-2))){
   
     Ntot[ns,1:ncountyears] <- Ntot[1,1:ncountyears]
     N1[ns,1:ncountyears] <- N1[1,1:ncountyears]
@@ -555,7 +555,7 @@ names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
 print(ipm.model, dig=3)
 out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
 out %>% filter(!startsWith(parm,"Ntot")) %>% filter(!startsWith(parm,"db")) %>%select(parm, median, lcl, ucl, Rhat, n.eff)
-write.table(out, "output/AQWA_GER_model_nscenarios_output.v12.csv", sep=",")
+write.table(out, "output/AQWA_GER_model_nscenarios_output.v13.csv", sep=",")
 
 
 
@@ -587,8 +587,8 @@ ntotdf <- data.frame(Ntot = numeric(length = length(ipm.model$mean$Ntot)),
                                   rep("No mowing + 15y Habitat Constrained 2400 ha", 47),
                                   rep("Past trajectory without mowing", 47),
                                   rep("Past trajectory with mowing", 47)),
-                     survival=rep(c("no survival improvement","5% survival improvement"), each=nscenarios*47),
-                     year = rep(1:47, nscenarios*2))
+                     survival=rep(c("no survival improvement","5% survival increase","5% survival decrease"), each=nscenarios*47),
+                     year = rep(1:47, nscenarios*3))
 
 ntotdf$Ntot <- as.numeric(t(ipm.model$mean$Ntot))
 ntotdf$cim <- as.numeric(t(ipm.model$q2.5$Ntot))
@@ -646,14 +646,16 @@ poptrends <-
   theme(legend.position = "none") +
   xlab("Year") + ylab("Aquatic Warbler population size")
 poptrends
-#ggsave("output/Scenario_projections_v12.jpg", width=241,height=191, quality=100, units="mm")
+#ggsave("output/Scenario_projections_v13.jpg", width=241,height=191, quality=100, units="mm")
 
 
+
+##### ALTERED THIS TO PROBABILITY OF TARGET POP SIZE OF 100
 # Extinction probability (could plot this as well)
-## revised to show prop samples where Ntot<3
+## revised to show prop samples where Ntot>100
 
 w0 <- function(x){
-  ext <- sum(x < 2) / length(x)
+  ext <- sum(x > 99) / length(x)
   return(ext)
 }
 
@@ -683,42 +685,71 @@ names(fut.ext)<- rep(c("Mowing + 5y Habitat Unconstrained", "Mowing + 10y Habita
                    "No mowing + 5y Habitat Constrained 400 ha", "No mowing + 10y Habitat Constrained 400 ha","No mowing + 15y Habitat Constrained 400 ha",
                    "No mowing + 5y Habitat Constrained 1200 ha", "No mowing + 10y Habitat Constrained 1200 ha","No mowing + 15y Habitat Constrained 1200 ha",
                    "No mowing + 5y Habitat Constrained 2400 ha", "No mowing + 10y Habitat Constrained 2400 ha","No mowing + 15y Habitat Constrained 2400 ha",
-                   "Past trajectory without mowing","Past trajectory with mowing"), 2)
+                   "Past trajectory without mowing","Past trajectory with mowing"), 3)
+
+habitat<- rep(c(10000, 10000, 10000,
+                10000, 10000,10000,
+                       200, 200,200,
+                       400, 400,400,
+                       1200, 1200,1200,
+                       2400, 2400,2400,
+                       9999,9999), 3)
+
+rel.years<- rep(c(5, 10, 15,
+                       5, 10,15,
+                       5, 10,15,
+                       5, 10,15,
+                       5, 10,15,
+                       5, 10,15,
+                       0,0), 3)
 
 
 fut.ext %>%
   pivot_longer(names(fut.ext), names_to = "Scenario", values_to = "N") %>%
   #gather(key="Scenario",value="N") %>%
-  mutate(survival=rep(rep(c("no survival improvement","5% survival improvement"), each=(nscenarios)),40000)) %>%
-  filter(!(str_detect(pattern="15y", string=Scenario))) %>%
+  mutate(habitat=rep(habitat,40000)) %>%
+  mutate(releases=rep(rel.years,40000)) %>%
+  mutate(survival=rep(rep(c("no survival change","5% survival increase","5% survival decrease"), each=(nscenarios)),40000)) %>%
+  #filter(!(str_detect(pattern="15y", string=Scenario))) %>%
+  filter((str_detect(pattern="No mowing", string=Scenario))) %>%
   filter(!(Scenario %in% c("Past trajectory without mowing", "Past trajectory with mowing"))) %>%
-  group_by(Scenario,survival) %>%
+  group_by(Scenario,survival,habitat,releases) %>%
   summarize(ext.prob=w0(N)) %>%
+  # mutate(habitat=as.factor(habitat)) %>%
+  # ungroup() %>%
+  #mutate(habitat=ifelse(habitat==3000,"unlimited",habitat)) %>%
+  #filter(!ext.prob==0) %>%
   
   ### start the plot ###
-  ggplot(aes(x = Scenario, y=ext.prob, fill = Scenario)) +                       # Draw overlaying histogram
-  geom_bar(stat="identity",alpha = 0.6) +
+  #ggplot(aes(x = Scenario, y=ext.prob, fill = Scenario)) +                       # Draw overlaying histogram
+  #geom_bar(stat="identity",alpha = 0.6) +
+  ggplot(aes(x = as.factor(habitat), y=ext.prob, fill = as.factor(releases), colour = as.factor(releases))) +                       # Draw overlaying histogram
+  #geom_line(linewidth=1.5) +
+  geom_bar(stat="identity",position=position_dodge(width=0.3), width=0.2) +
   facet_wrap(~survival, ncol = 1)  +
-  labs(x="Future scenarios", y="Probability of extinction within 20 years",
-       fill="Scenario") +
-  scale_fill_discrete() +
+  labs(x="Extent of habitat (ha)", y="Probability of target population size after 25 years",
+       fill="N of release years", colour="N of release years") +
+  #scale_fill_discrete() +
+  #guides(fill = guide_legend(nrow = 5)) +
   
   theme(panel.background=element_rect(fill="white", colour="black"), 
-        axis.text.y=element_text(size=12, color="black"),
-        axis.text.x=element_blank(), 
+        axis.text=element_text(size=12, color="black"),
+        #axis.text.x=element_blank(), 
         axis.title=element_text(size=14),
         strip.text=element_text(size=14, color="black"),
         strip.background=element_rect(fill="white", colour="black"),
         legend.text=element_text(size=10),
         legend.title = element_text(size=12),
-        legend.position="bottom",
-        legend.direction="horizontal",
+        legend.position="inside",
+        legend.position.inside=c(0.12,0.9),
+        legend.background=element_blank(),
+        #legend.direction="horizontal",
         panel.grid.major = element_line(linewidth=.1, color="grey94"),
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Extinction_probability.jpg", width=351,height=191, quality=100, units="mm")
+ggsave("output/Target_pop_size_probability.jpg", width=351,height=191, quality=100, units="mm")
 
 
 
