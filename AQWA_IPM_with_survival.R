@@ -751,6 +751,49 @@ fut.ext %>%
 
 ggsave("output/Target_pop_size_probability.jpg", width=351,height=191, quality=100, units="mm")
 
+################################################################################
+#######EXTRACTING PROBABILITY OF DECREASE 10 YEARS AFTER END OF RELEASES########
+################################################################################
+
+#On the projections: Calculations accounting for uncertainty
+
+samples <- ipm.model$sims.list$Ntot #40000 samples, 40 scenarios, 47 years
+
+#End of releases (releases start at t = 27 + 1).  
+endrel <- rep(c(5,10,15), 12) + 22
+endrel10 <- endrel + 10
+
+#Remove past scenarios from the samples 
+samplesr <- samples[,-c(19, 20, 39, 40),]
+
+nsc <- 36
+ndraws <- 40000
+
+calcs <- array(data = NA, dim = c(ndraws, nsc, 2)) #Nscenarios x Nsamples x Nkey (end releases vs end projections)
+
+for(i in 1:ndraws){
+  for(j in 1:nsc){
+    
+    calcs[i,j,1] <- samplesr[i, j, endrel[j]]
+    calcs[i,j,2] <- samplesr[i, j, endrel10[j]]
+    
+  }
+}
+
+
+
+
+subcalcs <- calcs[,,2] - calcs[,,1] #This is the absolute difference, that is, values above 0 mean the population has increased 10 years after release, values below 0 mean otherwise.
+
+#Now, let's extract probabilities
+probdecline <- numeric(length = nsc)
+
+for(i in 1:nsc)
+  probdecline[i] <- 1- (sum(subcalcs[,i] >= 0) / ndraws)
+
+
+rescalcs <- data.frame(Scenario = rep(levels(ntotdf$Scenario)[1:18],2), survival = c(rep("no survival improvement", 18), rep("no survival improvement", 18)), probdecline = probdecline, mean = apply(subcalcs, 2, mean), cimin = apply(subcalcs, 2, quantile, probs = c(0.025)), cimax = apply(subcalcs, 2, quantile, probs = c(0.975)))
+
 
 
 

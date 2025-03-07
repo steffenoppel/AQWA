@@ -830,6 +830,9 @@ for(i in 1:ndraws){
 #This is the absolute difference, that is, values above 0 mean the population has increased 10 years after release, values below 0 mean otherwise. One could also show relative values.
 
 subcalcs <- calcs[,,2] - calcs[,,1]
+
+
+
 rescalcs <- data.frame(Scenario = rep(levels(ntotdf$Scenario)[1:18],2), survival = c(rep("no survival improvement", 18), rep("no survival improvement", 18)), mean = apply(subcalcs, 2, mean), cimin = apply(subcalcs, 2, quantile, probs = c(0.025)), cimax = apply(subcalcs, 2, quantile, probs = c(0.975)))
 
 
