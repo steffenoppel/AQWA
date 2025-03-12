@@ -809,8 +809,8 @@ rescalcs %>%
   #gather(key="Scenario",value="N") %>%
   mutate(habitat=habitat[c(1:18,21:38,41:58)]) %>%
   mutate(releases=rel.years[c(1:18,21:38,41:58)]) %>%
+  filter((str_detect(pattern="No mowing", string=Scenario))) %>%
 
-  
   ### start the plot ###
   ggplot(aes(x = as.factor(habitat), y=probdecline, fill = as.factor(releases), colour = as.factor(releases))) +                       # Draw overlaying histogram
   geom_bar(stat="identity",position=position_dodge(width=0.3), width=0.2) +
@@ -834,6 +834,7 @@ rescalcs %>%
 
 
 ggsave("output/Future_decrease_probability.jpg", width=351,height=241, quality=100, units="mm")
+write.table(rescalcs, "output/AQWA_GER_decrease_probabilities_10y_post_release.csv", sep=",")
 
 
 
