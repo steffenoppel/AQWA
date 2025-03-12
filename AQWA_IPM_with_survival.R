@@ -625,7 +625,7 @@ poptrendspast <-
   theme(legend.position = "none") +
   xlab("Year") + ylab("Aquatic Warbler population size")
 poptrendspast
-ggsave("output/Past_population_trajectories.jpg", width=241,height=191, quality=100, units="mm")
+ggsave("output/Past_population_trajectories.jpg", width=191,height=241, quality=100, units="mm")
 
 
 
@@ -635,18 +635,22 @@ ggsave("output/Past_population_trajectories.jpg", width=241,height=191, quality=
 poptrends <- 
   ntotdf %>%
   filter(!(Scenario %in% c("Past trajectory without mowing", "Past trajectory with mowing"))) %>%
+  mutate(survival=ifelse(survival=="no survival improvement","no survival change",survival)) %>%
+  
 
   ggplot(aes(x = year+2002, y = Ntot, col = survival, linetype=survival, group = survival)) +
   geom_line(linewidth = 1.1) +
   geom_vline(aes(xintercept = 2025), linetype = 2) +
   #geom_ribbon(aes(ymin = cim, ymax = cip,linetype=survival), fill = NA) +
-  geom_ribbon(aes(ymin = cim, ymax = cip,fill=survival), colour=NA, alpha=0.5) +
+  geom_ribbon(aes(ymin = cim, ymax = cip,fill=survival), colour=NA, alpha=0.3) +
   facet_wrap(~Scenario, ncol = 3, scales="free_y")  +
   theme_bw() +
-  theme(legend.position = "none") +
+  #theme(legend.position = "none") +
+  theme(legend.position="bottom",
+      legend.direction="horizontal") +
   xlab("Year") + ylab("Aquatic Warbler population size")
 poptrends
-#ggsave("output/Scenario_projections_v13.jpg", width=241,height=191, quality=100, units="mm")
+#ggsave("output/Scenario_projections_v13.jpg", width=241,height=241, quality=100, units="mm")
 
 
 
@@ -749,7 +753,7 @@ fut.ext %>%
         panel.border = element_rect(fill=NA, colour = "black"))
 
 
-ggsave("output/Target_pop_size_probability.jpg", width=351,height=191, quality=100, units="mm")
+ggsave("output/Target_pop_size_probability.jpg", width=351,height=241, quality=100, units="mm")
 
 ################################################################################
 #######EXTRACTING PROBABILITY OF DECREASE 10 YEARS AFTER END OF RELEASES########
@@ -757,16 +761,16 @@ ggsave("output/Target_pop_size_probability.jpg", width=351,height=191, quality=1
 
 #On the projections: Calculations accounting for uncertainty
 
-samples <- ipm.model$sims.list$Ntot #40000 samples, 40 scenarios, 47 years
+samples <- ipm.model$sims.list$Ntot #40000 samples, 60 scenarios, 47 years
 
 #End of releases (releases start at t = 27 + 1).  
-endrel <- rep(c(5,10,15), 12) + 22
+endrel <- rep(c(5,10,15), 18) + 22
 endrel10 <- endrel + 10
 
 #Remove past scenarios from the samples 
-samplesr <- samples[,-c(19, 20, 39, 40),]
+samplesr <- samples[,-c(19, 20, 39, 40, 59,60),]
 
-nsc <- 36
+nsc <- 54
 ndraws <- 40000
 
 calcs <- array(data = NA, dim = c(ndraws, nsc, 2)) #Nscenarios x Nsamples x Nkey (end releases vs end projections)
@@ -792,9 +796,44 @@ for(i in 1:nsc)
   probdecline[i] <- 1- (sum(subcalcs[,i] >= 0) / ndraws)
 
 
-rescalcs <- data.frame(Scenario = rep(levels(ntotdf$Scenario)[1:18],2), survival = c(rep("no survival improvement", 18), rep("no survival improvement", 18)), probdecline = probdecline, mean = apply(subcalcs, 2, mean), cimin = apply(subcalcs, 2, quantile, probs = c(0.025)), cimax = apply(subcalcs, 2, quantile, probs = c(0.975)))
+rescalcs <- data.frame(Scenario = rep(levels(ntotdf$Scenario)[1:18],3),
+                       survival = rep(c("no survival change","5% survival increase","5% survival decrease"), each=18),
+                       probdecline = probdecline,
+                       mean = apply(subcalcs, 2, mean),
+                       cimin = apply(subcalcs, 2, quantile, probs = c(0.025)),
+                       cimax = apply(subcalcs, 2, quantile, probs = c(0.975)))
 
 
+rescalcs %>%
+  #pivot_longer(names(fut.ext), names_to = "Scenario", values_to = "N") %>%
+  #gather(key="Scenario",value="N") %>%
+  mutate(habitat=habitat[c(1:18,21:38,41:58)]) %>%
+  mutate(releases=rel.years[c(1:18,21:38,41:58)]) %>%
+
+  
+  ### start the plot ###
+  ggplot(aes(x = as.factor(habitat), y=probdecline, fill = as.factor(releases), colour = as.factor(releases))) +                       # Draw overlaying histogram
+  geom_bar(stat="identity",position=position_dodge(width=0.3), width=0.2) +
+  facet_wrap(~survival, ncol = 1)  +
+  labs(x="Extent of habitat (ha)", y="Probability of population decline 10 years after end of reinforcement",
+       fill="N of release years", colour="N of release years") +
+  
+  theme(panel.background=element_rect(fill="white", colour="black"), 
+        axis.text=element_text(size=12, color="black"),
+        axis.title=element_text(size=14),
+        strip.text=element_text(size=14, color="black"),
+        strip.background=element_rect(fill="white", colour="black"),
+        legend.text=element_text(size=10),
+        legend.title = element_text(size=12),
+        legend.position="bottom",
+        legend.background=element_blank(),
+        legend.direction="horizontal",
+        panel.grid.major = element_line(linewidth=.1, color="grey94"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(fill=NA, colour = "black"))
+
+
+ggsave("output/Future_decrease_probability.jpg", width=351,height=241, quality=100, units="mm")
 
 
 
@@ -821,13 +860,15 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
          mowing.imp.surv=`proj.lambda[21]`,
          # no.mowing.lim.hab.200=`proj.lambda[27]`,
          # no.mowing.lim.hab.1200=`proj.lambda[33]`,
-         no.mowing.imp.surv=`proj.lambda[24]`,) %>%
+         no.mowing.imp.surv=`proj.lambda[24]`,
+         no.mowing.red.surv=`proj.lambda[44]`) %>%
   dplyr::select(-tidyselect::starts_with("proj.lambda")) %>%
   gather(key="Scenario",value="lambda") %>%
   filter(lambda>0.5) %>% ## remove bizarre growth rates caused by extinct populations?
   mutate(Scenario=if_else(Scenario=="mowing.imp.surv", "improved survival, no second broods",
                           if_else(Scenario=="nochange", "current survival, no second broods",
-                          if_else(Scenario=="no.mowing.curr.surv","current survival and second broods","improved survival and second broods")))) %>%
+                          if_else(Scenario=="no.mowing.red.surv", "reduced survival and second broods",
+                          if_else(Scenario=="no.mowing.curr.surv","current survival and second broods","improved survival and second broods"))))) %>%
   
   ### start the plot ###
   ggplot(aes(x = lambda, fill = Scenario)) +                       # Draw overlaying histogram
@@ -847,7 +888,7 @@ as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[
         legend.text=element_text(size=12),
         legend.title = element_text(size=14),
         legend.position="inside",
-        legend.position.inside=c(0.16,0.86),
+        legend.position.inside=c(0.18,0.82),
         panel.grid.major = element_line(size=.1, color="grey94"),
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))

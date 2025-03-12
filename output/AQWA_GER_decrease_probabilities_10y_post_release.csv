@@ -1,0 +1,55 @@
+"Scenario","survival","probdecline","mean","cimin","cimax"
+"1","Mowing + 5y Habitat Unconstrained","no survival change",0.9997,-52.524175,-78,-26
+"2","Mowing + 10y Habitat Unconstrained","no survival change",0.999925,-79.17115,-115,-45
+"3","Mowing + 15y Habitat Unconstrained","no survival change",1,-93.96645,-137,-56
+"4","No mowing + 5y Habitat Unconstrained","no survival change",0.549425,3.27875,-55,111
+"5","No mowing + 10y Habitat Unconstrained","no survival change",0.550525,10.01435,-87,211
+"6","No mowing + 15y Habitat Unconstrained","no survival change",0.550925,20.8007,-112,346
+"7","No mowing + 5y Habitat Constrained 200 ha","no survival change",0.99525,-35.1445,-64,-8
+"8","No mowing + 10y Habitat Constrained 200 ha","no survival change",0.99835,-39.113325,-68,-12
+"9","No mowing + 15y Habitat Constrained 200 ha","no survival change",0.9984,-38.923325,-67,-12
+"10","No mowing + 5y Habitat Constrained 400 ha","no survival change",0.7164,-14.2462,-58,30
+"11","No mowing + 10y Habitat Constrained 400 ha","no survival change",0.9861,-44.151925,-88,-5
+"12","No mowing + 15y Habitat Constrained 400 ha","no survival change",0.988925,-45.497975,-90,-6
+"13","No mowing + 5y Habitat Constrained 1200 ha","no survival change",0.5505,2.773175,-55,109
+"14","No mowing + 10y Habitat Constrained 1200 ha","no survival change",0.55655,-0.690775,-87,119
+"15","No mowing + 15y Habitat Constrained 1200 ha","no survival change",0.73875,-30.11745,-116,69
+"16","No mowing + 5y Habitat Constrained 2400 ha","no survival change",0.5514,3.17375,-55,109.025000000001
+"17","No mowing + 10y Habitat Constrained 2400 ha","no survival change",0.550275,9.701775,-87,213
+"18","No mowing + 15y Habitat Constrained 2400 ha","no survival change",0.556025,10.989875,-112,246
+"19","Mowing + 5y Habitat Unconstrained","5% survival increase",0.9836,-43.45325,-75,-5
+"20","Mowing + 10y Habitat Unconstrained","5% survival increase",0.992475,-71.270675,-115,-21
+"21","Mowing + 15y Habitat Unconstrained","5% survival increase",0.995325,-90.8749,-142,-33
+"22","No mowing + 5y Habitat Unconstrained","5% survival increase",0.1367,76.56935,-31,285
+"23","No mowing + 10y Habitat Unconstrained","5% survival increase",0.104925,180.019175,-43,684
+"24","No mowing + 15y Habitat Unconstrained","5% survival increase",0.09305,328.3963,-54,1319
+"25","No mowing + 5y Habitat Constrained 200 ha","5% survival increase",0.992925,-31.365675,-58,-7
+"26","No mowing + 10y Habitat Constrained 200 ha","5% survival increase",0.998,-35.624925,-62,-11
+"27","No mowing + 15y Habitat Constrained 200 ha","5% survival increase",0.99805,-35.73945,-62,-11
+"28","No mowing + 5y Habitat Constrained 400 ha","5% survival increase",0.513875,-1.4375,-44,40
+"29","No mowing + 10y Habitat Constrained 400 ha","5% survival increase",0.9806,-35.46175,-73,-2
+"30","No mowing + 15y Habitat Constrained 400 ha","5% survival increase",0.983125,-36.28105,-74,-3
+"31","No mowing + 5y Habitat Constrained 1200 ha","5% survival increase",0.136525,72.64365,-31,232
+"32","No mowing + 10y Habitat Constrained 1200 ha","5% survival increase",0.1574,58.136725,-50,156
+"33","No mowing + 15y Habitat Constrained 1200 ha","5% survival increase",0.68275,-16.4579,-91,75
+"34","No mowing + 5y Habitat Constrained 2400 ha","5% survival increase",0.13405,76.865725,-31,286
+"35","No mowing + 10y Habitat Constrained 2400 ha","5% survival increase",0.1034,156.815425,-44,432
+"36","No mowing + 15y Habitat Constrained 2400 ha","5% survival increase",0.12065,137.107825,-63,331
+"37","Mowing + 5y Habitat Unconstrained","5% survival decrease",1,-53.669575,-77,-32
+"38","Mowing + 10y Habitat Unconstrained","5% survival decrease",1,-74.68725,-107,-47
+"39","Mowing + 15y Habitat Unconstrained","5% survival decrease",1,-83.578,-120,-52
+"40","No mowing + 5y Habitat Unconstrained","5% survival decrease",0.9152,-31.664675,-68,22
+"41","No mowing + 10y Habitat Unconstrained","5% survival decrease",0.936925,-53.1524,-105,26
+"42","No mowing + 15y Habitat Unconstrained","5% survival decrease",0.94735,-69.337675,-133,29
+"43","No mowing + 5y Habitat Constrained 200 ha","5% survival decrease",0.997975,-41.1977,-68,-13
+"44","No mowing + 10y Habitat Constrained 200 ha","5% survival decrease",0.999475,-45.446675,-72,-17
+"45","No mowing + 15y Habitat Constrained 200 ha","5% survival decrease",0.99935,-45.4597,-72,-17
+"46","No mowing + 5y Habitat Constrained 400 ha","5% survival decrease",0.932875,-33.37195,-68,11
+"47","No mowing + 10y Habitat Constrained 400 ha","5% survival decrease",0.99635,-59.168625,-100,-15
+"48","No mowing + 15y Habitat Constrained 400 ha","5% survival decrease",0.997175,-62.2819,-103,-17
+"49","No mowing + 5y Habitat Constrained 1200 ha","5% survival decrease",0.916075,-31.5989,-67,22
+"50","No mowing + 10y Habitat Constrained 1200 ha","5% survival decrease",0.936925,-53.292475,-105,27
+"51","No mowing + 15y Habitat Constrained 1200 ha","5% survival decrease",0.9572,-70.99645,-135,14
+"52","No mowing + 5y Habitat Constrained 2400 ha","5% survival decrease",0.9118,-31.67815,-68,22
+"53","No mowing + 10y Habitat Constrained 2400 ha","5% survival decrease",0.938425,-53.205075,-106,26
+"54","No mowing + 15y Habitat Constrained 2400 ha","5% survival decrease",0.9462,-68.919825,-134,30
