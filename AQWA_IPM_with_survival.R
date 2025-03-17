@@ -708,7 +708,7 @@ rel.years<- rep(c(5, 10, 15,
                        0,0), 3)
 
 
-fut.ext %>%
+target.prob<- fut.ext %>%
   pivot_longer(names(fut.ext), names_to = "Scenario", values_to = "N") %>%
   #gather(key="Scenario",value="N") %>%
   mutate(habitat=rep(habitat,40000)) %>%
@@ -718,7 +718,7 @@ fut.ext %>%
   filter((str_detect(pattern="No mowing", string=Scenario))) %>%
   filter(!(Scenario %in% c("Past trajectory without mowing", "Past trajectory with mowing"))) %>%
   group_by(Scenario,survival,habitat,releases) %>%
-  summarize(ext.prob=w0(N)) %>%
+  summarize(ext.prob=w0(N))
   # mutate(habitat=as.factor(habitat)) %>%
   # ungroup() %>%
   #mutate(habitat=ifelse(habitat==3000,"unlimited",habitat)) %>%
@@ -727,7 +727,7 @@ fut.ext %>%
   ### start the plot ###
   #ggplot(aes(x = Scenario, y=ext.prob, fill = Scenario)) +                       # Draw overlaying histogram
   #geom_bar(stat="identity",alpha = 0.6) +
-  ggplot(aes(x = as.factor(habitat), y=ext.prob, fill = as.factor(releases), colour = as.factor(releases))) +                       # Draw overlaying histogram
+  ggplot(data=target.prob,aes(x = as.factor(habitat), y=ext.prob, fill = as.factor(releases), colour = as.factor(releases))) +                       # Draw overlaying histogram
   #geom_line(linewidth=1.5) +
   geom_bar(stat="identity",position=position_dodge(width=0.3), width=0.2) +
   facet_wrap(~survival, ncol = 1)  +
@@ -752,7 +752,7 @@ fut.ext %>%
         panel.grid.minor = element_blank(),
         panel.border = element_rect(fill=NA, colour = "black"))
 
-
+write.table(target.prob, "output/AQWA_Target100_pop_size_probability_25y.csv", sep=",")
 ggsave("output/Target_pop_size_probability.jpg", width=351,height=241, quality=100, units="mm")
 
 ################################################################################
