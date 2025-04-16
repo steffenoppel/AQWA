@@ -7,8 +7,14 @@ model {
 
 # Initial population sizes
 
-N1[1,1] ~ dnorm(60, 0.0001)T(0,)           # 1-year old individuals
-NadSurv[1,1] ~ dnorm(100, 0.0001)T(0,)      # Adults >= 2 years
+N1[1,1] ~ dnorm(600, 0.0001)T(0,)           # 1-year old individuals
+NadSurv[1,1] ~ dnorm(1600, 0.0001)T(0,)      # Adults >= 2 years
+Nfem.breed1[1,1] <- (Ntot[1,1]*(1-prop.males))
+Nfem.breed2[1,1] ~ dbin(db[1,1],round(Nfem.breed1[1,1]))
+chicks[1,1] <- Nfem.breed1[1,1] * mfec1 + Nfem.breed2[1,1]*mfec2			# total fecundity
+chicksrd[1,1] <- round(chicks[1,1])
+
+
 
 # DEMOGRAPHIC PARAMETERS INFORMED BY DATA FROM OTHER STUDIES
 mfec1 ~ dnorm(3.15,1/(0.16^2))			   ### fecundity = number of fledglings raised per FIRST brood
@@ -79,31 +85,30 @@ for(ns in 1:nscenarios){
   }
 }
 
-   # 4.2 System process
-   for (t in 2:ncountyears){
+# 4.2 System process
+for (t in 2:ncountyears){
    
-            Nfem.breed1[1,t] <- (Ntot[1,t-1]*(1-prop.males))
-            Nfem.breed2[1,t] ~ dbin(db[1,t],round(Nfem.breed1[1,t]))
+    Nfem.breed1[1,t] <- (Ntot[1,t]*(1-prop.males))
+    Nfem.breed2[1,t] ~ dbin(db[1,t],round(Nfem.breed1[1,t]))
 
-      	    chicks[1,t-1] <- Nfem.breed1[1,t] * fec1[t] + Nfem.breed2[1,t]*fec2[t]			# total fecundity
-      	    chicksrd[1,t-1] <- round(chicks[1,t-1])
+    chicks[1,t] <- Nfem.breed1[1,t] * fec1[t] + Nfem.breed2[1,t]*fec2[t]			# total fecundity
+    chicksrd[1,t] <- round(chicks[1,t])
         
-      	# chicks[1,t-1] <- (Ntot[1,t-1])*(1-prop.males)* fec1[t-1] # total fecundity
-      	# chicksrd[1,t-1] <- round(chicks[1,t-1])
 		N1[1,t] ~ dbin(phij[t-1],chicksrd[1,t-1]) 
 		NadSurv[1,t] ~ dbin(phi.ad,round((Ntot[1,t-1])))
-	}
+}
 
-   # 4.3 Observation process
-   for (t in 1:ncountyears){
+# 4.3 Observation process
+for (t in 1:ncountyears){
    	    Ntot[1,t] <- NadSurv[1,t] + N1[1,t]								## total population		
 	      Ntotobs[t] <- max(1,(Ntot[1,t]))*prop.males								## only males are counted, which is 56% of population
 	      Ntotrd[t] <- round(Ntotobs[t])
         y[t] ~ dpois(Ntotrd[t])
         
-   }
+}
    
-   # 4.4 Survival estimation
+
+# 4.4 Survival estimation
    for (i in 1:n.marked){
     # Define latent state at first capture
     z[i,f[i]] <- 1
@@ -125,16 +130,15 @@ for(ns in 1:nscenarios){
 ### COPY THE PAST VALUES FOR ALL SCENARIOS
 
 for(ns in 2:nscenarios){
-  for(t in 2:(ncountyears)){
+  for(t in 1:ncountyears){
   
     Nfem.breed1[ns,t] <- Nfem.breed1[1,t]
     Nfem.breed2[ns,t] <- Nfem.breed2[1,t]
-    # chicks[ns,t] <- chicks[1,t]
-    # chicksrd[ns,t] <- chicksrd[1,t]
+    chicks[ns,t] <- chicks[1,t]
+    chicksrd[ns,t] <- chicksrd[1,t]
     N1[ns,t] <- N1[1,t]
 		NadSurv[ns,t] <- NadSurv[1,t]
 		Ntot[ns,t] <-Ntot[1,t]
-
   }
 }
 
@@ -143,7 +147,7 @@ for(ns in 2:nscenarios){
 
 
     
-    ## POPULATION PROCESS
+## POPULATION PROCESS
 
     for(ns in 1:nscenarios){
       for (t in (ncountyears+1):(ncountyears+nprojyears)){
@@ -152,9 +156,9 @@ for(ns in 2:nscenarios){
             Nfem.breed1[ns,t] <- (Ntot[ns,t]*(1-prop.males)) - n_nest_removed[ns]    ### N breeders is reduced by number of nests that are removed
             Nfem.breed2[ns,t] ~ dbin(db[ns,t],round(Nfem.breed1[ns,t] + n_nest_removed[ns]))  ### the removed nests woud still allow the females to second brood
 
-      	    chicks[ns,t-1] <- Nfem.breed1[ns,t-1] * fec1[t] + Nfem.breed2[ns,t-1]*mfec2			# total fecundity
-      	    chicksrd[ns,t-1] <- round(chicks[ns,t-1])
-		        N1[ns,t] ~ dbin(phij[t-1],chicksrd[ns,t-1]) 
+      	    chicks[ns,t] <- Nfem.breed1[ns,t] * fec1[t] + Nfem.breed2[ns,t]*mfec2			# total fecundity
+      	    chicksrd[ns,t] <- round(chicks[ns,t])
+		        N1[ns,t] ~ dbin(phij[t-1],max(chicksrd[ns,t-1],1)) 
 		        NadSurv[ns,t] ~ dbin(phi.ad,round((Ntot[ns,t-1])))
 		   	    Ntot[ns,t] <- NadSurv[ns,t] + N1[ns,t]								## total population	
   	} #Time loop
@@ -162,7 +166,7 @@ for(ns in 2:nscenarios){
   	
   	## FINAL POPULATION GROWTH RATE (steady state after reintroduction ends)
   	# Population growth rate
-    for (t in (ncountyears+2):(ncountyears+nprojyears-1)){
+    for (t in (ncountyears):(ncountyears+nprojyears-1)){
       lambda.f[ns,t] <- Ntot[ns,t+1] / max(1,Ntot[ns,t]) # prevent invalid parent error when Ntot=0
       loglambda.f[ns,t]<-log(lambda.f[ns,t])## for calculating geometric mean of overall population growth rate
     }
