@@ -427,4 +427,4 @@ prob_decline<-as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.
   group_by(N_nests) %>%
   summarise(prob=mean(decline))
 
-fwrite(prob_decline,"AQWA_source_pop_prob_decline_nest_removal.csv")
+fwrite(prob_decline,"output/AQWA_source_pop_prob_decline_nest_removal.csv")
