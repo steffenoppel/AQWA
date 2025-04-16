@@ -375,3 +375,56 @@ poptrends
 ggsave("output/Source_pop_scenario_projections.jpg", width=241,height=241, quality=100, units="mm")
 
 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CALCULATE PROBABILITY OF DECLINE ----------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## plot histograms of future growth rates
+
+as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[[3]],ipm.model$samples[[4]])) %>%
+  dplyr::select(tidyselect::starts_with("proj.lambda")) %>%
+  gather(key="Scenario",value="lambda") %>%
+  mutate(N_nests=as.numeric(str_extract(Scenario, "(\\d)+"))-1) %>%
+  mutate(N_nests=factor(N_nests, levels=as.character(seq(0,15,1)))) %>%
+  
+
+  ### start the plot ###
+  ggplot(aes(x = lambda, fill = N_nests)) +                       # Draw overlaying histogram
+  geom_histogram(position = "identity", alpha = 0.1, bins = 80, aes(y = after_stat(density)), color="black") +
+  geom_density(alpha=0.3) +
+  #geom_vline(aes(xintercept = 1), colour="indianred3", size=1) +
+  geom_segment(aes(x = 1, y = 0, xend = 1, yend = 17), colour="firebrick", linetype = "dashed", linewidth=1)+
+  
+  labs(x="Future population growth rate", y="Probability density",
+       fill="Number of nests removed annually") +
+  scale_fill_viridis_d(alpha=0.3,begin=0,end=0.98,direction=1) +
+  scale_color_viridis_d(alpha=1,begin=0,end=0.98,direction=1) +
+  
+  theme(panel.background=element_rect(fill="white", colour="black"), 
+        axis.text=element_text(size=18, color="black"), 
+        axis.title=element_text(size=20),
+        legend.text=element_text(size=12),
+        legend.title = element_text(size=14),
+        legend.position="inside",
+        legend.position.inside=c(0.18,0.72),
+        panel.grid.major = element_line(size=.1, color="grey94"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(fill=NA, colour = "black"))
+
+
+ggsave("output/Source_pop_future_pop_growth_rates.jpg", width=235,height=181, quality=100, units="mm")
+
+
+
+#### TABLE OF PROBABILITY OF DECLINE
+
+prob_decline<-as_tibble(rbind(ipm.model$samples[[1]],ipm.model$samples[[2]],ipm.model$samples[[3]],ipm.model$samples[[4]])) %>%
+  dplyr::select(tidyselect::starts_with("proj.lambda")) %>%
+  gather(key="Scenario",value="lambda") %>%
+  mutate(N_nests=as.numeric(str_extract(Scenario, "(\\d)+"))-1) %>%
+  mutate(decline=ifelse(lambda<1,1,0)) %>%
+  group_by(N_nests) %>%
+  summarise(prob=mean(decline))
+
+fwrite(prob_decline,"AQWA_source_pop_prob_decline_nest_removal.csv")
