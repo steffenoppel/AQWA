@@ -1,0 +1,41 @@
+
+model {
+
+loglam~dunif(-5,5)
+trend~dunif(-10,10)
+beta.wat2~dunif(-5,5)
+beta.wat3~dunif(-5,5)
+beta.wat4~dunif(-5,5)
+bveg2~dunif(-5,5)
+bveg3~dunif(-5,5)
+bveg4~dunif(-5,5)
+
+for(i in 1:nsite){
+lam.site[i]~dnorm(0,tau.site)
+}
+tau.site<-1/(sigma.site*sigma.site)
+sigma.site~dunif(0,10)
+
+for(year in 1:nyear){
+p0[year]~dunif(0,1)
+logitp0[year]<-log(p0[year]/(1-p0[year]))
+}
+tau.lp<-1/(sigma.p*sigma.p)
+sigma.p~dunif(0,10)
+
+for(year in 1:nyear){
+for(i in 1:nsite){
+log(lambda[i,year])<- loglam + trend*primocc[year]+beta.wat2*wat2[i,year]+beta.wat3*wat3[i,year]+beta.wat4*wat4[i,year]+lam.site[i]
+N[i,year]~dpois(lambda[i,year])
+
+for(t in 1:nrep){
+M[i,t,year]~dbin(p[i,t,year],N[i,year])
+p[i,t,year] <- exp(lp[i,t,year])/(1+exp(lp[i,t,year]))
+lp[i,t,year] ~ dnorm(mu.lp[i,t,year], tau.lp)
+mu.lp[i,t,year]<-logitp0[year] + bveg2*veg2[i,year]+ bveg3*veg3[i,year]+ bveg4*veg4[i,year]
+}
+}
+totalN[year]<-sum(N[,year])
+}
+}
+
