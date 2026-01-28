@@ -131,9 +131,9 @@ inits <- function(){list(N = Nst, loglam = runif(1, -3, 3), sigma.site = runif(1
 parameters <- c("loglam","lam.site","totalN","N", "fit", "fit.new","trend")
 
 # MCMC settings
-ni <- 5000				## fit statistic needs >400000 to converge!!
-nt <- 4
-nb <- 1000
+ni <- 500000				## fit statistic needs >400000 to converge!!
+nt <- 400
+nb <- 100000
 nc <- 3
 
 
@@ -152,6 +152,51 @@ mean(trend.model$mean$fit) / mean(trend.model$mean$fit.new)
 
 # Summarize posteriors
 print(trend.model, dig = 2)
+
+
+
+
+
+
+
+############################################################################
+# CHECK CONVERGENCE AND WRITE ALL OUTPUT INTO A TEXT FILE ----
+##############################################################################
+out<-as.data.frame(trend.model$summary)  
+out$parameter<-row.names(trend.model$summary)
+names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
+print(trend.model, dig=3)
+out %>% arrange(desc(Rhat)) %>% select(parm, median, lcl, ucl, Rhat, n.eff)
+write.table(out, "output/AQWA_Biebrza_trend_model_output.csv", sep=",")
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Figure 1: POPULATION TRAJECTORY IN PAST AND FUTURE BY SCENARIO ----------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+data.frame(Ntot = trend.model$mean$totalN,
+                     cip = trend.model$q2.5$totalN,
+                     cim = trend.model$q97.5$totalN,
+                     year=seq(2011,2025,1)) %>%
+
+
+  
+  ggplot(aes(x = year, y = Ntot)) +
+  geom_line(linewidth = 1.1, col="firebrick") +
+  geom_ribbon(aes(ymin = cim, ymax = cip), linetype = 2, fill="firebrick", alpha=0.2) +
+  xlab("Year") + ylab("Aquatic Warbler population size") +
+  theme(panel.background=element_rect(fill="white", colour="black"), 
+        axis.text=element_text(size=14, color="black"),
+        axis.title=element_text(size=16),
+        panel.grid.major = element_line(linewidth=.1, color="grey94"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(fill=NA, colour = "black"))
+
+
+
+ggsave("output/AQWA_Biebrza_trend_2011_2025.jpg", width=291,height=201, quality=100, units="mm")
 
 
 
