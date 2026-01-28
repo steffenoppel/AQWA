@@ -6,6 +6,8 @@
 ## modified by steffen.oppel@rspb.org.uk on 24 Aug 2013
 ## modified by steffen.oppel@vogelwarte.ch in January 2026
 
+
+rm(list=ls())
 YEAR<-2025					### LAST YEAR WITH DATA FOR MONITORING
 nyears<-length(c(2011:YEAR))		### number of years for analysis
 nsites<-50					### number of transects
@@ -13,12 +15,12 @@ nsites<-50					### number of transects
 
 
 
-rm(list=ls())
 library(tidyverse)
 library(data.table)
 library(jagsUI)
 library(readxl)
 library(IPMbook)
+library(reshape2)
 filter<-dplyr::filter
 select<-dplyr::select
 
@@ -38,60 +40,81 @@ AW<-fread("data/AQWA_counts_POL.csv") %>%
   mutate(Date=dmy(Date))
 head(AW)
 years<-unique(AW$Year)
-
+table(AW$No_singing_males)
 
 hab<-fread("data/AQWA_habitat_POL.csv") %>%
   mutate(Date=dmy(Date)) %>%
   dplyr::filter(!is.na(Transect))
 head(hab)
+dim(hab)
+dim(AW)
 
 
+### CONVERT DATES INTO A CONTINUOUS NUMBER STARTING ON the earliest day ever surveyed
+AW$yday<-yday(AW$Date)
+min(AW$yday)
+AW$yday<-AW$yday-(min(AW$yday)-1)
 
 
 
 ########## SPLIT SURVEYS DATA FRAME INTO SITE AND SURVEY SPECIFIC INFORMATION ###########
-sites<-aggregate(tree_height~Transect_ID+Block+Year+Dead_vegetation+Water+Veg_height, data=surveys, FUN='unique')
-surveys<-aggregate(Date~Transect_ID+Count+Year+MeanTemperatureC+MeanWindSpeedKmh+Precipitationmm+Observer, data=surveys, FUN='unique')
-head(surveys)
-dim(surveys)
-head(sites)
+# sites<-aggregate(tree_height~Transect_ID+Block+Year+Dead_vegetation+Water+Veg_height, data=surveys, FUN='unique')
+# surveys<-aggregate(Date~Transect_ID+Count+Year+MeanTemperatureC+MeanWindSpeedKmh+Precipitationmm+Observer, data=surveys, FUN='unique')
+# head(surveys)
+# dim(surveys)
+# head(sites)
+# dim(sites)
+
+sites<-hab %>%
+  dplyr::filter(!is.na(Transect)) %>%
+  dplyr::filter(Transect!="") %>%
+  group_by(Year, Transect) %>%
+  summarise(veg_height=mean(Av_veget_height),tree=mean(Trees_shrubs),tree_height=mean(Tree_shrub_av_height), reed=mean(Reed), water=mean(Water_level), litter=mean(Litter)) %>%
+  ungroup()
+  #mutate(site=paste(Transect,"_",Part_of_transect))
 dim(sites)
 
 
-### CONVERT DATES INTO A CONTINUOUS NUMBER STARTING ON 10 MAY EACH YEAR
+habsurveys<-hab %>%
+  group_by(Year, Transect) %>%
+  summarise(day=first(Date)) %>%
+  ungroup()
+dim(habsurveys)
 
-surveys$Date<-as.Date(surveys$Date, format="%d/%m/%Y")                 #formats the column into a Date object
-surveys$year<-as.numeric(format(surveys$Date, format="%Y"))            # extracts the year from the Date column and creates a new year column
-surveys$Year<-NULL							            # removes the column 3 (Year) so that year is the last column
-for (y in 2011:2013){							# loops over years specified to calculate the season day in each year
-startdate<-as.Date(sprintf("%d-05-10 00:00",y))             # set a startdate, here 10 May (must be smaller than first survey day)
-surveys$Day[surveys$year==y]<-as.numeric(surveys$Date[surveys$year==y]-startdate)   #calculate the difference between the start date and the survey date
-}
-surveys$Date<-NULL
-head(surveys)
-head(birds)
-#fix(surveys)
-#fix(birds)
-birds$Date<-NULL
+surveys<-AW %>%
+  group_by(Year,Transect_no, Control) %>%
+  summarise(N=sum(No_singing_males),day=first(yday))
+dim(surveys)
 
 
+### TRYING TO UNDERSTAND HOW OFTEN EACH TRANSECT WAS COUNTED
 
-### ADD THE NUMBER OF AQWA TO EACH SURVEY, including zero counts (which are not in the imported query)
-
-surveys$AQWA <- 0  										 # creates a blank data frame that has zero for every count
-surveys$Transect<-paste(surveys$Transect_ID,surveys$Count,surveys$year,sep = "_")		# creates a matching expression for each transect and count
-birds$Transect<-paste(birds$Transect_ID,birds$Count, birds$Year ,sep = "_")			# creates a matching expression for each transect and count
-surveys$AQWA[match(birds$Transect,surveys$Transect)]<-birds$SumOfnumber_males		# adds the data to the right transect and count based on the matching expression for each transect and count
-surveys$AQWA[is.na(surveys$AQWA)]<-0								# all NA in the AQWA field are because of zero counts
-head(surveys)
+surveys %>%
+  group_by(Year,Transect_no) %>%
+  summarise(counts=max(Control)) %>%
+  pivot_wider(names_from='Year', values_from='counts')
 
 
-#### ADD MISSING SURVEYS ###########
+nsites<-length(unique(sites$Transect))
+nyears<-length(unique(surveys$Year))
 
 
-if (dim(surveys)[1]==nyears*3*nsites){    					### this must be same dimensions as 50*3*2=300 
-surveys<-surveys[order(surveys$Transect_ID,surveys$Count, decreasing=F),]
-head(surveys)
+# ### ADD THE NUMBER OF AQWA TO EACH SURVEY, including zero counts (which are not in the imported query)
+# 
+# surveys$AQWA <- 0  										 # creates a blank data frame that has zero for every count
+# surveys$Transect<-paste(surveys$Transect_ID,surveys$Count,surveys$year,sep = "_")		# creates a matching expression for each transect and count
+# birds$Transect<-paste(birds$Transect_ID,birds$Count, birds$Year ,sep = "_")			# creates a matching expression for each transect and count
+# surveys$AQWA[match(birds$Transect,surveys$Transect)]<-birds$SumOfnumber_males		# adds the data to the right transect and count based on the matching expression for each transect and count
+# surveys$AQWA[is.na(surveys$AQWA)]<-0								# all NA in the AQWA field are because of zero counts
+# head(surveys)
+# 
+# 
+# #### ADD MISSING SURVEYS ###########
+# 
+# 
+# if (dim(surveys)[1]==nyears*3*nsites){    					### this must be same dimensions as 50*3*2=300 
+# surveys<-surveys[order(surveys$Transect_ID,surveys$Count, decreasing=F),]
+# head(surveys)
 
 
 
@@ -101,21 +124,18 @@ head(surveys)
 # 
 #######################################################################################################
 
-### create array to be filled with data
-AQWA.y<-array(NA, dim=c(nsites,3,nyears))
+# number of transects changes over time
+# number of controls varies by year and transect
+# needs robust loop to generate a full array
 
-#### CAST THE MOLTEN DATA FRAME INTO MATRIX WITH 1 COLUMN PER COUNT and fill in array
-for (y in 1:nyears){
-b<-subset(surveys, year==c(2011:YEAR)[y])
-b$Transect<-paste(b$Transect_ID,b$year,sep = "_")		# creates a matching expression for each transect and count
-dis<-cast(b, Transect~Count, value="AQWA")							# pivot table to create data frame with one line per transect per year, and each column reflecting the observations per distance band on each count survey
-dis<-dis[order(dis$Transect,decreasing=F),]
-# fix(dis)
-# head(dis)
-AQWA.y[,,y]<-as.matrix(dis[,2:4], dimnames=NULL)
-}
 
-}else{print("something is wrong with the survey data - dimensions not correct")} ## close the IF loop that only runs when number of surveys is correct
+# If duplicates per cell **do not** exist:
+AQWA.y <- acast(surveys, Transect_no ~ Control ~ Year, value.var = "N")
+obs.cov.day <- acast(surveys, Transect_no ~ Control ~ Year, value.var = "day")
+obs.cov.eff <- acast(surveys, Transect_no ~ Control ~ Year, value.var = "N")
+obs.cov.eff <- ifelse(is.na(obs.cov.eff),0,1)
+             
+
 
 
 
@@ -158,31 +178,6 @@ surv$lit4[surv$Transect==i]<-dim(subset(sites[sites$Transect==i,], Dead_vegetati
 head(surv)
 dim(surv)
 
-
-if ('B35' %in% surv$Transect_ID[surv$Year==2012]){
-missing<-(surv[surv$Transect_ID=='B35' & surv$Year==2012,])
-missing[,3:16]<-NA
-missing$Year<-2011		### add year when the transect was skipped
-surv<-rbind(surv,missing)}
-surv$Transect<-paste(surv$Transect_ID,surv$Year,sep = "_")		# creates a matching expression for each transect and count
-
-if ('B21' %in% surv$Transect_ID[surv$Year==2012]){
-missing<-(surv[surv$Transect_ID=='B21' & surv$Year==2012,])
-missing[,3:16]<-NA
-missing$Year<-2013		### add year when the transect was skipped
-surv<-rbind(surv,missing)}
-surv$Transect<-paste(surv$Transect_ID,surv$Year,sep = "_")}		# creates a matching expression for each transect and count
-
-
-sites<-surv[order(surv$Transect_ID, surv$Year,decreasing=F),]
-for(i in 1:2){
-sites[,i]<-as.factor(sites[,i])
-}
-sites$Transect<-NULL
-dim(sites)      # this should be 150 transects
-sites$yearnum<-ifelse(sites$Year=="2011",2011,ifelse(sites$Year=="2012",2012,2013)) 
-head(sites)
-#fix(sites)
 
 
 
@@ -356,13 +351,86 @@ dim(temp)
 
 
 #### SAVE WORKSPACE
+
+try(setwd("C:/Users/jba/OneDrive - Vogelwarte/Projects/Aquatic Warbler Steffen/Github repo/AQWA"),silent=T)
+try(setwd("C:/STEFFEN/OneDrive - Vogelwarte/ExternalCollaborations/AQWA"),silent=T)
+try(setwd("C:/Users/sop/OneDrive - Vogelwarte/ExternalCollaborations/AQWA"),silent=T)
 rm(AQWA_count,b,birds,bugs.dir,col,dis,i,meant,meantree,missing,obsC,obsCov,sdt,sdtree, siteCov, siteCovList,sites,startdate,surv,surveys,surveys_red,x,x2,y,YEAR)
 ls()
-save.image("C:\\STEFFEN\\RSPB\\AquaticWarbler\\Analysis\\Trend_monitoring\\AQWA_BMM_input.RData")
-save.image("A:\\RSPB\\AquaticWarbler\\Analysis\\Trend_monitoring\\AQWA_BMM_input.RData")
+save.image("data\\AQWA_trend_input.RData")
 
 bugs.data<-list(M = AQWA.y, nsite=nsites, nrep=3, primocc=seq(1:nyears), nyear=nyears,veg2=veg2,veg3=veg3,veg4=veg4, wat2=wat2,wat3=wat3,wat4=wat4)
 rm(AQWA.y,d,day,lit1,lit2,lit3,lit4,nsites,nyears,rain,temp,veg1,veg2,veg23,veg3,veg4,wat1,wat2,wat3,wat4,wind)
 save.image("C:\\STEFFEN\\MANUSCRIPTS\\Submitted\\AQWA_census\\PeerageofScience\\AquaticWarbler_monitoring_data.RData")
 
+
+
+
+######################################################################################################
+# 
+# 7. SPECIFY TREND MODEL IN JAGS ------------------------
+# 
+#######################################################################################################
+
+
+model{
+  
+  # Priors
+  loglam~dunif(-5,5)##mean abundance prior
+  trend~dunif(-10,10)##    trend prior
+  
+  for(i in 1:nsite){
+    lam.site[i]~dnorm(0,tau.site)T(-20, 20)## needs to be T(-20, 20) in JAGS
+  }
+  tau.site<-1/(sigma.site*sigma.site)
+  sigma.site~dunif(0,10)
+  for(year in 1:nyear){
+    p0[year]~dunif(0,1)
+    logitp0[year]<-log(p0[year]/(1-p0[year]))
+  }
+  tau.lp<-1/(sigma.p*sigma.p)
+  sigma.p~dunif(0,10)
+  
+  
+  # State and observation models
+  for(year in 1:nyear){
+    for(i in 1:nsite){
+      log(lambda[i,year])<- loglam + trend*primocc[year]+lam.site[i]## 'primocc' is the primary occasion - here: years
+      #log(lambda[i,year])<- loglam + lam.site[i]
+      N[i,year]~dpois(lambda[i,year])
+      
+      for(t in 1:nrep){
+        M[i,t,year]~dbin(p[i,t,year],N[i,year])
+        p[i,t,year] <- exp(lp[i,t,year])/(1+exp(lp[i,t,year]))
+        lp[i,t,year] ~ dnorm(mu.lp[i,t,year], tau.lp)T(-20, 20) # H.c.
+        mu.lp[i,t,year]<-logitp0[year]
+      }
+    }
+  }
+  
+  # Computation of fit statistic (Bayesian p-value)
+  # Fit statistic for observed data
+  # Also, generate replicate data and compute fit stats for them
+  for(year in 1:nyear){
+    totalN[year]<-sum(N[,year])
+    
+    for(i in 1:nsite){
+      for(t in 1:nrep){
+        
+        # Actual data
+        eval[i,t,year] <-N[i,year]*p[i,t,year] # Expected value
+        sd.resi[i,t,year]<-sqrt(eval[i,t,year]*(1-p[i,t,year])) +0.5
+        E[i,t,year]<-(M[i,t,year]-eval[i,t,year])/ sd.resi[i,t,year]
+        E2[i,t,year] <- pow(E[i,t,year],2)
+        
+        # Replicate data sets
+        M.new[i,t,year]~dbin(p[i,t,year],N[i,year])
+        E.new[i,t,year]<-(M.new[i,t,year]-eval[i,t,year])/sd.resi[i,t,year]
+        E2.new[i,t,year] <- pow(E.new[i,t,year], 2)
+      }
+    }
+  }
+  fit <- sum(E2[,,])# Sum up squared residuals for actual data set
+  fit.new <- sum(E2.new[,,]) # Sum up for replicate data sets
+}
 
