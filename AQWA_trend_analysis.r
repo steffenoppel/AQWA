@@ -27,29 +27,20 @@ try(setwd("C:/STEFFEN/OneDrive - Vogelwarte/ExternalCollaborations/AQWA"),silent
 try(setwd("C:/Users/sop/OneDrive - Vogelwarte/ExternalCollaborations/AQWA"),silent=T)
 
 
-######################################################################################################
-# 
-# 1. READ IN THE DATA THAT HAVE BEEN FORMATTED FOR JAGS
-# 
-#######################################################################################################
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 1. LOAD DATA (prepared in script AQWA_BMM_data_preparation_multiyear.r) ----------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 load("data\\AQWA_trend_input.RData")
-
-######################################################################################################
-# 
-# DATA SCREENING AND SIMPLE SUMMARY
-# 
-######################################################################################################
 y<-AQWA.y
 head(y)
 
 
-######################################################################################################
-# 
-# MODEL 1: Simple Binomial-mixture model for trend estimation as described by Kery et al. 2009 - no covariates
-# 
-######################################################################################################
-# Specify model in BUGS language
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 2. FORMULATE TREND MODEL AND ANALYSE DATA ----------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## 2.1. Specify model in BUGS language ------
 sink("models/NmixTrend.jags")
 cat("
 model{
@@ -116,7 +107,7 @@ fit.new <- sum(E2.new[,,]) 	# Sum up for replicate data sets
 sink()
 
 
-# Bundle data
+## 2.2. Bundle data, initial values and specify monitored parameters -----------
 R = nrow(y)
 T = ncol(y)
 nyears = dim(y)[3]
@@ -137,12 +128,16 @@ nb <- 10000
 nc <- 3
 
 
-# Call JAGS from R
+## 2.3. RUN MODEL IN JAGS  -----------
 trend.model <- jags(jags.data,
                   inits,
                   parameters,
                   "models/NmixTrend.jags",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
+
+
+
+## 2.4. SUMMARISE OUTPUT AND EVALUATE MODEL  -----------------------------------
 
 # Evaluation of fit
 plot(trend.model$sims.list$fit, trend.model$sims.list$fit.new, main = "", xlab = "Discrepancy actual data", ylab = "Discrepancy replicate data", frame.plot = FALSE)
@@ -156,12 +151,8 @@ print(trend.model, dig = 2)
 
 
 
+## 2.5. CHECK CONVERGENCE AND WRITE ALL OUTPUT INTO A TEXT FILE ----------------
 
-
-
-############################################################################
-# CHECK CONVERGENCE AND WRITE ALL OUTPUT INTO A TEXT FILE ----
-##############################################################################
 out<-as.data.frame(trend.model$summary)  
 out$parameter<-row.names(trend.model$summary)
 names(out)[c(12,5,3,7)]<-c('parm','median','lcl','ucl')
@@ -172,9 +163,7 @@ write.table(out, "output/AQWA_Biebrza_trend_model_output.csv", sep=",")
 
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Figure 1: POPULATION TRAJECTORY IN PAST AND FUTURE BY SCENARIO ----------
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## 2.6. FIGURE OF POPULATION TRAJECTORY  ---------------------------------------
 
 data.frame(Ntot = trend.model$mean$totalN,
                      cip = trend.model$q2.5$totalN,
@@ -202,39 +191,49 @@ ggsave("output/AQWA_Biebrza_trend_2011_2025.jpg", width=291,height=201, quality=
 
 
 
-######################################################################################################
-# 
-# COMPARE RAW COUNT AND ESTIMATED ABUNDANCE 
-# 
-######################################################################################################
-count2011<-apply(y[,,1],2,sum,na.rm=T)
-count2012<-apply(y[,,2],2,sum,na.rm=T)
-count2013<-apply(y[,,3],2,sum,na.rm=T)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 3. COMPARE RAW DATA WITH ESTIMATES ----------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+AW %>% ##dplyr::filter(Year==2015) %>% dplyr::filter(Transect_no=="TBB74")
+  group_by(Year,Transect_no, Control) %>%
+  summarise(N=sum(No_singing_males),day=first(yday)) %>%
+  ungroup() %>%
+  group_by(Year,Transect_no) %>%
+  summarise(Max=mean(N)) %>% ##print(n=80)
+  ungroup() %>%
+  group_by(Year) %>%
+  #summarise(mean=mean(Max,na.rm=T),lcl=quantile(Max,0.025, na.rm=T),ucl=quantile(Max,0.975,na.rm=T)) %>%
+  summarise(mean=mean(Max,na.rm=T),sd=sd(Max,na.rm=T)) %>% mutate(lcl=mean-0.5*sd,ucl=mean+0.5*sd, Data="Raw data (Mean N per transect)") %>%
+  
+  bind_rows(
+    data.frame(mean = trend.model$mean$totalN,
+               lcl = trend.model$q2.5$totalN,
+               ucl = trend.model$q97.5$totalN,
+               Year=seq(2011,2025,1),
+               Data="Model estimates (Total Number)")) %>%
+  
+  
+  ggplot(aes(x = Year, y = mean, col=Data, fill=Data)) +
+  geom_line(linewidth = 1.1) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl), linetype = 2, alpha=0.2) +
+  scale_x_continuous(breaks=seq(2011,2025,2), labels=seq(2011,2025,2)) +
+  facet_wrap(~Data, ncol=1, scales="free_y") +
+  xlab("Year") + ylab("Aquatic Warbler abundance") +
+  theme(panel.background=element_rect(fill="white", colour="black"), 
+        axis.text=element_text(size=14, color="black"),
+        axis.title=element_text(size=16),
+        strip.text=element_text(size=14, color="black"),
+        strip.background=element_rect(fill="white", colour="black"),
+        legend.text=element_text(size=12),
+        legend.title = element_text(size=14),
+        legend.position="none",
+        legend.position.inside=c(0.18,0.82),
+        panel.grid.major = element_line(linewidth=.1, color="grey94"),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(fill=NA, colour = "black"))
 
 
-model3$summary[62,1]/649				## for max count in 2011
-model3$summary[62,3]/649				## for max count in 2011
-model3$summary[62,7]/649				## for max count in 2011
+ggsave("output/AQWA_Biebrza_trend_2011_2025.jpg", width=201,height=291, quality=100, units="mm")
 
-model3$summary[63,1]/608				## for max count in 2012
-model3$summary[63,3]/608				## for max count in 2012
-model3$summary[63,7]/608				## for max count in 2012
-
-model3$summary[64,1]/622				## for max count in 2013
-model3$summary[64,3]/622				## for max count in 2013
-model3$summary[64,7]/622				## for max count in 2013
-
-
-
-########################################################################################
-### ESTIMATE RATIO OF FULL COUNT VS MODEL ESTIMATE AND OVERALL DENSITY   ############
-########################################################################################
-mean(c(model3$summary[62,1]/649,model3$summary[63,1]/608,model3$summary[64,1]/622)) *2594
-mean(c(model3$summary[62,3]/649,model3$summary[63,3]/608,model3$summary[64,3]/622)) *2594
-mean(c(model3$summary[62,7]/649,model3$summary[63,7]/608,model3$summary[64,7]/622)) *2594
-
-(model3$summary[63,1]/608) *2594
-(model3$summary[63,3]/608)*2594
-(model3$summary[63,7]/608)*2594
 
 

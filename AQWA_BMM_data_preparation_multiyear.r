@@ -355,7 +355,7 @@ obs.cov.eff <- ifelse(is.na(obs.cov.eff),0,1)
 try(setwd("C:/Users/jba/OneDrive - Vogelwarte/Projects/Aquatic Warbler Steffen/Github repo/AQWA"),silent=T)
 try(setwd("C:/STEFFEN/OneDrive - Vogelwarte/ExternalCollaborations/AQWA"),silent=T)
 try(setwd("C:/Users/sop/OneDrive - Vogelwarte/ExternalCollaborations/AQWA"),silent=T)
-rm(AQWA_count,b,birds,bugs.dir,col,dis,i,meant,meantree,missing,obsC,obsCov,sdt,sdtree, siteCov, siteCovList,sites,startdate,surv,surveys,surveys_red,x,x2,y,YEAR)
+rm(AQWA_count,b,birds,bugs.dir,col,dis,i,meant,meantree,missing,obsC,obsCov,sdt,sdtree, siteCov, siteCovList,sites,startdate,surv,x,x2,y,YEAR)
 ls()
 save.image("data\\AQWA_trend_input.RData")
 
