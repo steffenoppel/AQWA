@@ -131,9 +131,9 @@ inits <- function(){list(N = Nst, loglam = runif(1, -3, 3), sigma.site = runif(1
 parameters <- c("loglam","lam.site","totalN","N", "fit", "fit.new","trend")
 
 # MCMC settings
-ni <- 500000				## fit statistic needs >400000 to converge!!
-nt <- 400
-nb <- 100000
+ni <- 50000				## fit statistic needs >400000 to converge!!
+nt <- 40
+nb <- 10000
 nc <- 3
 
 
