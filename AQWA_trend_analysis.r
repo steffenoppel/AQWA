@@ -2,16 +2,8 @@
 #################################### AQUATIC WARBLER MONITORING DATA ANALYSIS 2026 ####################################################
 #######################################################################################################################################
 # written by steffen.oppel@rspb.org.uk
-# TRANSECT B35 was only surveyed in 2012!
-# 17 May 2012: updated script to remove veg1 (redundant in combination with veg2+veg3+veg4)!
-# 7 August 2013: reverted to BMM (rather than gdistsamp) due to reviewer criticism
-# 25 Aug 2013: removed beta-binomial mixture models, as simple BMM provided perfect fit for data even without covariates
-# 27 August: ran a varieties of site-cov models, but DIC is always lowest for the one incl veg2, veg3, and veg4
-# 7 October 2013: tried to implement Adam Butler's suggestions for incorporating power analysis in BUGS code -> TRAP UNDEFINED REAL RESULT
-# 9 October 2013: updated model 3 to include wat and veg as abund and det level covariates
-# 12 Dec 2013: updated model to include day instead of temp after repeated model selection un unmarked 
-## RESULT: DIC is LOWEST for model 3 with wat and veg as covariates (model 1: DIC = 3048.9, model 2: DIC = 2873.6, model 3: DIC = 2179.3)
-
+# adapted in January 2026 to data up to 2025
+# so far no attempt to include covariates
 
 
 ############### LOAD THE REQUIRED PACKAGES #########################################################
@@ -33,8 +25,9 @@ try(setwd("C:/Users/sop/OneDrive - Vogelwarte/ExternalCollaborations/AQWA"),sile
 
 load("data\\AQWA_trend_input.RData")
 y<-AQWA.y
+# y<-y[1:50,,]  ## only analyse the 50 transects that existed since 2011
 head(y)
-
+str(y)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. FORMULATE TREND MODEL AND ANALYSE DATA ----------
@@ -195,6 +188,7 @@ ggsave("output/AQWA_Biebrza_trend_2011_2025.jpg", width=291,height=201, quality=
 # 3. COMPARE RAW DATA WITH ESTIMATES ----------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 AW %>% ##dplyr::filter(Year==2015) %>% dplyr::filter(Transect_no=="TBB74")
+  ## dplyr::filter(as.numeric(substr(Transect_no,4,6))<51) %>% ## remove transect data that were not monitored in all years
   group_by(Year,Transect_no, Control) %>%
   summarise(N=sum(No_singing_males),day=first(yday)) %>%
   ungroup() %>%
