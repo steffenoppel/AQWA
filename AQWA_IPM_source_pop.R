@@ -8,6 +8,17 @@
 # scenarios with no mowing and unlimited habitat only for Biebrza population
 # each year 10-12 nests are removed and females can only produce one secondary clutch
 
+# update on 16 Nov 2026: attempt to include count data into population model
+
+
+## NEED TO DO:
+## add habitat covariates into observation model (once successfully implemented in trenbd model)
+## add those habitat covariates into future projection scenarios to extrapolate abundance
+## estimate future population trend under extraction scenarios
+## include additional survival and fecundity data from Justyna Kubacka (once available)
+
+
+
 rm(list=ls())
 library(tidyverse)
 library(data.table)
@@ -212,13 +223,34 @@ for (t in 2:ncountyears){
 }
 
 # 4.3 Observation process
-for (t in 1:ncountyears){
-   	    Ntot[1,t] <- NadSurv[1,t] + N1[1,t]								## total population		
-	      Ntotobs[t] <- max(1,(Ntot[1,t]))*prop.males								## only males are counted, which is 56% of population
-	      Ntotrd[t] <- round(Ntotobs[t])
-        y[t] ~ dpois(Ntotrd[t])
-        
-}
+# for (t in 1:ncountyears){
+#    	    Ntot[1,t] <- NadSurv[1,t] + N1[1,t]								## total population		
+# 	      Ntotobs[t] <- max(1,(Ntot[1,t]))*prop.males								## only males are counted, which is 56% of population
+# 	      Ntotrd[t] <- round(Ntotobs[t])
+#         y[t] ~ dpois(Ntotrd[t])
+#         
+# }
+
+# 4.3 ALTERNATIVE Observation process based on repeated transect monitoring 
+  for(year in 1:ncountyears){
+   	 Ntot[1,year] <- NadSurv[1,year] + N1[1,year]								## total population
+	   Ntotobs[year] <- max(1,(Ntot[1,year]))*prop.males				## only males are counted, which is 56% of population
+	   Ntotrd[year] <- round(Ntotobs[year])
+	   
+      for(i in 1:nsite){
+        N[i,year]~dbin(prop.site[year],Ntotrd[year])            ## do we feed in prop.site with data or do we estimate it??
+
+        for(t in 1:nrep){
+          M[i,t,year] ~ dbin(p[i,t,year],N[i,year])
+          p[i,t,year] <- exp(lp[i,t,year])/(1+exp(lp[i,t,year]))
+          lp[i,t,year] ~ dnorm(mu.lp[i,t,year], tau.lp)T(-20, 20) # H.c.
+          mu.lp[i,t,year]<-logitp0[year]
+        }
+      }
+    }
+   
+
+
    
 
 # 4.4 Survival estimation

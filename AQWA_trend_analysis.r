@@ -5,6 +5,12 @@
 # adapted in January 2026 to data up to 2025
 # so far no attempt to include covariates
 
+## NEED TO DO:
+## expand data preparation to include site- and observation-level values for covariates (veg height, water level, litter, nest_place - note that these are all ordered categories!)
+## fit exploratory models in 'unmarked' to assess which covariate relationships are best for detection and site abundance
+## select top model and build in habitat covariates into detection and abundance part of trend model
+
+
 
 ############### LOAD THE REQUIRED PACKAGES #########################################################
 
@@ -38,63 +44,63 @@ sink("models/NmixTrend.jags")
 cat("
 model{
 
-# Priors
-loglam~dunif(-5,5)					##	mean abundance prior
-trend~dunif(-10,10)					##    trend prior
+  # Priors
+    loglam~dunif(-5,5)					##	mean abundance prior
+    trend~dunif(-10,10)					##    trend prior
 
-for(i in 1:nsite){
-lam.site[i]~dnorm(0,tau.site)T(-20, 20)		## needs to be T(-20, 20) in JAGS
-}
-tau.site<-1/(sigma.site*sigma.site)
-sigma.site~dunif(0,10)
-for(year in 1:nyear){
-p0[year]~dunif(0,1)
-logitp0[year]<-log(p0[year]/(1-p0[year]))
-}
-tau.lp<-1/(sigma.p*sigma.p)
-sigma.p~dunif(0,10)
+    for(i in 1:nsite){
+      lam.site[i]~dnorm(0,tau.site)T(-20, 20)		## needs to be T(-20, 20) in JAGS
+    }
+    tau.site<-1/(sigma.site*sigma.site)
+    sigma.site~dunif(0,10)
+    for(year in 1:nyear){
+      p0[year]~dunif(0,1)
+      logitp0[year]<-log(p0[year]/(1-p0[year]))
+    }
+    tau.lp<-1/(sigma.p*sigma.p)
+    sigma.p~dunif(0,10)
 
 
-# State and observation models
-for(year in 1:nyear){
-for(i in 1:nsite){
-log(lambda[i,year])<- loglam + trend*primocc[year]+lam.site[i]		## 'primocc' is the primary occasion - here: years
-#log(lambda[i,year])<- loglam + lam.site[i]
-N[i,year]~dpois(lambda[i,year])
+  # State and observation models
+    for(year in 1:nyear){
+      for(i in 1:nsite){
+        log(lambda[i,year])<- loglam + trend*primocc[year]+lam.site[i]		## 'primocc' is the primary occasion - here: years
+        #log(lambda[i,year])<- loglam + lam.site[i]
+        N[i,year]~dpois(lambda[i,year])
 
-for(t in 1:nrep){
-M[i,t,year]~dbin(p[i,t,year],N[i,year])
-p[i,t,year] <- exp(lp[i,t,year])/(1+exp(lp[i,t,year]))
-lp[i,t,year] ~ dnorm(mu.lp[i,t,year], tau.lp)T(-20, 20) # H.c.
-mu.lp[i,t,year]<-logitp0[year]
-}
-}
-}
+        for(t in 1:nrep){
+          M[i,t,year] ~ dbin(p[i,t,year],N[i,year])
+          p[i,t,year] <- exp(lp[i,t,year])/(1+exp(lp[i,t,year]))
+          lp[i,t,year] ~ dnorm(mu.lp[i,t,year], tau.lp)T(-20, 20) # H.c.
+          mu.lp[i,t,year]<-logitp0[year]
+        }
+      }
+    }
 
-# Computation of fit statistic (Bayesian p-value)
-# Fit statistic for observed data
-# Also, generate replicate data and compute fit stats for them
-for(year in 1:nyear){
-totalN[year]<-sum(N[,year])
+  # Computation of fit statistic (Bayesian p-value)
+  # Fit statistic for observed data
+  # Also, generate replicate data and compute fit stats for them
+    for(year in 1:nyear){
+      totalN[year]<-sum(N[,year])
 
-for(i in 1:nsite){
-for(t in 1:nrep){
+      for(i in 1:nsite){
+        for(t in 1:nrep){
 
-# Actual data
-eval[i,t,year] <-N[i,year]*p[i,t,year] # Expected value
-sd.resi[i,t,year]<-sqrt(eval[i,t,year]*(1-p[i,t,year])) +0.5
-E[i,t,year]<-(M[i,t,year]-eval[i,t,year])/ sd.resi[i,t,year]
-E2[i,t,year] <- pow(E[i,t,year],2)
+          # Actual data
+          eval[i,t,year] <-N[i,year]*p[i,t,year] # Expected value
+          sd.resi[i,t,year]<-sqrt(eval[i,t,year]*(1-p[i,t,year])) +0.5
+          E[i,t,year]<-(M[i,t,year]-eval[i,t,year])/ sd.resi[i,t,year]
+          E2[i,t,year] <- pow(E[i,t,year],2)
 
-# Replicate data sets
-M.new[i,t,year]~dbin(p[i,t,year],N[i,year])
-E.new[i,t,year]<-(M.new[i,t,year]-eval[i,t,year])/sd.resi[i,t,year]
-E2.new[i,t,year] <- pow(E.new[i,t,year], 2)
-}
-}
-}
-fit <- sum(E2[,,])		# Sum up squared residuals for actual data set
-fit.new <- sum(E2.new[,,]) 	# Sum up for replicate data sets
+          # Replicate data sets
+          M.new[i,t,year]~dbin(p[i,t,year],N[i,year])
+          E.new[i,t,year]<-(M.new[i,t,year]-eval[i,t,year])/sd.resi[i,t,year]
+          E2.new[i,t,year] <- pow(E.new[i,t,year], 2)
+        }
+      }
+    }
+    fit <- sum(E2[,,])		# Sum up squared residuals for actual data set
+    fit.new <- sum(E2.new[,,]) 	# Sum up for replicate data sets
 }
 ",fill = TRUE)
 sink()
