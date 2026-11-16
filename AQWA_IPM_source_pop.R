@@ -38,16 +38,25 @@ try(setwd("C:/Users/jba/OneDrive - Vogelwarte/Projects/Aquatic Warbler Steffen/G
 try(setwd("C:/STEFFEN/OneDrive - Vogelwarte/AQWA"),silent=T)
 try(setwd("C:/Users/sop/OneDrive - Vogelwarte/AQWA"),silent=T)
 
-AW<-fread("data/AQWA_counts_GER.csv") %>%
-  rename(Year=V1) %>%
-  filter(!is.na(Year)) %>%
-  filter(Year>2002) # omit the counts from the 1990s that suggest massive decreases
-head(AW)
-years<-AW$Year
+
+## replaced counts from GER with the actual transect surveys from Biebrza (prepared in script AQWA_BMM_data_preparation_multiyear.r)
+# AW<-fread("data/AQWA_counts_GER.csv") %>%
+#   rename(Year=V1) %>%
+#   filter(!is.na(Year)) %>%
+#   filter(Year>2002) # omit the counts from the 1990s that suggest massive decreases
+# head(AW)
+# years<-AW$Year
+
+
+load("data\\AQWA_trend_input.RData")
+y<-AQWA.y
+# y<-y[1:50,,]  ## only analyse the 50 transects that existed since 2011
+head(y)
+str(y)
 
 
 
-### load and prepare mark-resight data
+## 1.1. load and prepare mark-resight data ------------------------------------
 ## see script AQWA_survival.r for various alternative options
 AW_CH<-read_excel("data/AW_raw_data.xlsx", sheet="returns") %>%
   rename(ID=`ring ID`) %>%
@@ -91,17 +100,32 @@ nprojyears <- 25
 # impsurv[(nscenarios+1):(nscenarios*2)] <- 1.05 # 5% improvement in survival for second 19 scenarios
 # impsurv[(nscenarios*2+1):(nscenarios*3)] <- 0.95 # 5% reduction in survival for third 19 scenarios
 
-# Population counts (from years 2003 to 2024)
-y <- AW$Nmales+2408		# MADE UP NUMBER TO MATCH COUNT IN 2024
+# # Population counts (from years 2003 to 2024)
+# y <- AW$Nmales+2408		# MADE UP NUMBER TO MATCH COUNT IN 2024
 
-# compile data (because survival is only fraction of time series, and we cannot estimate temporal variability, we keep survival separate)
-jags.data <- list(ncountyears = length(years-1),
+
+## 1.2. manipulate count data and calculate proportion in site ------------------------------------
+
+totals <- apply(y, c(1,3), max, na.rm = TRUE)
+totals[is.na(totals)] <-0
+totals[!is.finite(totals)] <-0
+year.totals<-apply(totals, 2, sum, na.rm = TRUE)
+prop.site <- totals / year.totals
+
+
+
+## 1.3. compile data for JAGS ------------------------------
+### (because survival is only fraction of time series, and we cannot estimate temporal variability, we keep survival separate)
+
+
+jags.data <- list(ncountyears = dim(y)[3],
                   y = y,
+                  nsite = nrow(y),
+                  nrep = ncol(y),
+                  prop.site = prop.site,
                   nscenarios = nscenarios,
                   nprojyears = nprojyears,
                   n_nest_removed = n_nest_removed,
-                  #impsurv = impsurv,
-                  ## add survival data
                   n.marked=dim(AW_CH)[1],
                   n.markocc=dim(AW_CH[,3:7])[2],
                   age=age.mat,
@@ -109,8 +133,6 @@ jags.data <- list(ncountyears = length(years-1),
                   sex=as.numeric(AW_CH$sex),
                   y.marked = as.matrix(AW_CH[,3:7]))
 
-#Caution, we're missing data from year 2024, that leads to an error in the model. Let's add it manually.
-jags.data$y[22] <- 2411
 
 
 
@@ -121,7 +143,7 @@ jags.data$y[22] <- 2411
 # 
 ##############################################################################
 
-sink("models/AQWA.IPM.source.pop.jags")
+sink("models/AQWA.IPM.source.pop.count.txt")
 cat("
 model {
 
@@ -162,6 +184,15 @@ mphi[1] ~	dbeta(1.2,1.2)	### survival of first year birds
 # PRIORS FOR RESIGHTING PROBABILITY BASED ON SE POLAND
 mean.p[1] ~ dnorm(0.57, 1/(0.04^2))                  # resighting probability for males
 mean.p[2] ~ dnorm(0.26, 1/(0.04^2))T(0,)            # resighting probability for females
+
+
+# PRIORS FOR OBSERVATION MODEL
+for(year in 1:ncountyears){
+  p0.count[year]~dunif(0,1)
+  logitp0.count[year]<-log(p0.count[year]/(1-p0.count[year]))
+}
+tau.lp.count<-1/(sigma.p.count*sigma.p.count)
+sigma.p.count~dunif(0,10)
 
 
 
@@ -237,14 +268,16 @@ for (t in 2:ncountyears){
 	   Ntotobs[year] <- max(1,(Ntot[1,year]))*prop.males				## only males are counted, which is 56% of population
 	   Ntotrd[year] <- round(Ntotobs[year])
 	   
+	   N[1:nsite,year] ~ dmulti(prop.site[1:nsite,year], Ntotrd[year])   ## to enforce that site-specific abundances add up to total
+	   
       for(i in 1:nsite){
-        N[i,year]~dbin(prop.site[year],Ntotrd[year])            ## do we feed in prop.site with data or do we estimate it??
+        #N[i,year]~dbin(prop.site[i,year],Ntotrd[year])            ## do we feed in prop.site with data or do we estimate it??
 
         for(t in 1:nrep){
-          M[i,t,year] ~ dbin(p[i,t,year],N[i,year])
-          p[i,t,year] <- exp(lp[i,t,year])/(1+exp(lp[i,t,year]))
-          lp[i,t,year] ~ dnorm(mu.lp[i,t,year], tau.lp)T(-20, 20) # H.c.
-          mu.lp[i,t,year]<-logitp0[year]
+          y[i,t,year] ~ dbin(p.count[i,t,year],N[i,year])
+          p.count[i,t,year] <- exp(lp.count[i,t,year])/(1+exp(lp.count[i,t,year]))
+          lp.count[i,t,year] ~ dnorm(mu.lp.count[i,t,year], tau.lp.count)T(-20, 20) # H.c.
+          mu.lp.count[i,t,year]<-logitp0.count[year]
         }
       }
     }
@@ -324,14 +357,22 @@ for(ns in 2:nscenarios){
 sink()
 
 
-
 # Initial values
+Nst <- apply(ifelse(is.na(y),0,y), c(1, 3), max) + 1
+Nst[is.na(Nst)] <- 1
 inits <- function(){list(
   z= zInit(as.matrix(AW_CH[,3:7])),
   prop.phij = rbeta(1,50,5),
   phi.ad = rnorm(1,0.38,0.02),
   mean.p = c(runif(1, 0.4,0.6),runif(1, 0.2,0.3)),
   mphi= c(runif(1, 0.25,0.35),runif(1, 0.45,0.55)),    ## using rbeta results in crazy output and model does not converge at all
+  
+  ### count model
+  N = Nst,
+  p0.count = runif(nyears, 0, 1),
+  sigma.p.count = runif(1, 0, 10),
+  
+  ### fecundity model
   mfec1 = runif(1, 2.8,3.8),
   mfec2 = runif(1, 1.9,3.0))}
 
@@ -340,9 +381,9 @@ parameters <- c("proj.lambda","Ntot")
 
 
 # MCMC settings
-ni <- 75000
+ni <- 75
 nt <- 5
-nb <- 25000
+nb <- 25
 nc <- 4
 
 
@@ -350,7 +391,7 @@ nc <- 4
 ipm.model <- jags(jags.data,
                   inits,
                   parameters,
-                  "models/AQWA.IPM.source.pop.jags",
+                  "models/AQWA.IPM.source.pop.count.txt",
                   n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, n.cores=nc, parallel=T)
 
 
