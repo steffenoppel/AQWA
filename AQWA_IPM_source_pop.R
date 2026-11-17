@@ -268,10 +268,10 @@ for (t in 2:ncountyears){
 	   Ntotobs[year] <- max(1,(Ntot[1,year]))*prop.males				## only males are counted, which is 56% of population
 	   Ntotrd[year] <- round(Ntotobs[year])
 	   
-	   N[1:nsite,year] ~ dmulti(prop.site[1:nsite,year], Ntotrd[year])   ## to enforce that site-specific abundances add up to total
+	   # N[1:nsite,year] ~ dmulti(prop.site[1:nsite,year], Ntotrd[year])   ## to enforce that site-specific abundances add up to total
 	   
       for(i in 1:nsite){
-        #N[i,year]~dbin(prop.site[i,year],Ntotrd[year])            ## do we feed in prop.site with data or do we estimate it??
+        N[i,year]~dpois(max(0.0005,prop.site[i,year])*Ntotrd[year])            ## poisson instead of binomial to allow count error in both directions due to flexible portioning of pop among count transects
 
         for(t in 1:nrep){
           y[i,t,year] ~ dbin(p.count[i,t,year],N[i,year])
